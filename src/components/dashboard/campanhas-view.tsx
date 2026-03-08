@@ -200,7 +200,6 @@ export function CampanhasView({ data, loading }: Props) {
 
 function AdRows({ ads }: { ads: MetaAdRow[] }) {
   const adTd: React.CSSProperties = { ...tdStyle, fontSize: "12px", backgroundColor: "#FAFBFC" };
-  const dash: React.CSSProperties = { ...adTd, textAlign: "right", color: T.cinza300 };
 
   return (
     <>
@@ -224,21 +223,21 @@ function AdRows({ ads }: { ads: MetaAdRow[] }) {
             </td>
             {/* Gasto */}
             <td style={{ ...adTd, textAlign: "right" }}>{ad.spend > 0 ? formatBRL(ad.spend) : "-"}</td>
-            {/* Volume: Impr, Clicks, Leads, MQL(-), SQL(-), OPP(-), WON(-) */}
+            {/* Volume: Impr, Clicks, Leads, MQL, SQL, OPP, WON */}
             <td style={{ ...adTd, textAlign: "right" }}>{ad.impressions > 0 ? ad.impressions.toLocaleString("pt-BR") : "-"}</td>
             <td style={{ ...adTd, textAlign: "right" }}>{ad.clicks > 0 ? ad.clicks.toLocaleString("pt-BR") : "-"}</td>
             <td style={{ ...adTd, textAlign: "right", fontWeight: ad.leads > 0 ? 600 : 400 }}>{ad.leads > 0 ? ad.leads : "-"}</td>
-            <td style={dash}>-</td>
-            <td style={dash}>-</td>
-            <td style={dash}>-</td>
-            <td style={dash}>-</td>
-            {/* Custo: CPC, CPL, CMQL(-), CSQL(-), COPP(-), CPW(-) */}
+            <td style={{ ...adTd, textAlign: "right", fontWeight: ad.mql > 0 ? 600 : 400 }}>{ad.mql > 0 ? ad.mql : "-"}</td>
+            <td style={{ ...adTd, textAlign: "right" }}>{ad.sql > 0 ? ad.sql : "-"}</td>
+            <td style={{ ...adTd, textAlign: "right" }}>{ad.opp > 0 ? ad.opp : "-"}</td>
+            <td style={{ ...adTd, textAlign: "right", fontWeight: ad.won > 0 ? 700 : 400, color: ad.won > 0 ? T.verde700 : T.cinza300 }}>{ad.won > 0 ? ad.won : "-"}</td>
+            {/* Custo: CPC, CPL, CMQL, CSQL, COPP, CPW */}
             <td style={{ ...adTd, textAlign: "right" }}>{ad.cpc > 0 ? formatBRL(ad.cpc) : "-"}</td>
             <td style={{ ...adTd, textAlign: "right" }}>{ad.cpl > 0 ? formatBRL(ad.cpl) : "-"}</td>
-            <td style={dash}>-</td>
-            <td style={dash}>-</td>
-            <td style={dash}>-</td>
-            <td style={dash}>-</td>
+            <td style={{ ...adTd, textAlign: "right" }}>{ad.cmql > 0 ? formatBRL(ad.cmql) : "-"}</td>
+            <td style={{ ...adTd, textAlign: "right" }}>{ad.csql > 0 ? formatBRL(ad.csql) : "-"}</td>
+            <td style={{ ...adTd, textAlign: "right" }}>{ad.copp > 0 ? formatBRL(ad.copp) : "-"}</td>
+            <td style={{ ...adTd, textAlign: "right", fontWeight: ad.cpw > 0 ? 600 : 400 }}>{ad.cpw > 0 ? formatBRL(ad.cpw) : "-"}</td>
           </tr>
         );
       })}

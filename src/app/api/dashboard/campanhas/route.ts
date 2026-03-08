@@ -33,8 +33,8 @@ export async function GET(req: NextRequest) {
     const monthPrefix = snapshotDate!.substring(0, 7); // YYYY-MM
     const startDate = `${monthPrefix}-01`;
 
-    // Queries paralelas: Meta Ads + Pipedrive daily_counts
-    const [metaRes, countsRes] = await Promise.all([
+    // Queries paralelas: Meta Ads + Pipedrive daily_counts + Funil por ad
+    const [metaRes, countsRes, funnelRes] = await Promise.all([
       supabase
         .from("squad_meta_ads")
         .select("*")
@@ -44,12 +44,25 @@ export async function GET(req: NextRequest) {
         .from("squad_daily_counts")
         .select("tab, empreendimento, count")
         .gte("date", startDate),
+      supabase.rpc("get_ad_funnel_counts", { start_date: startDate }),
     ]);
 
     if (metaRes.error) throw new Error(`Supabase error: ${metaRes.error.message}`);
     if (countsRes.error) throw new Error(`Daily counts error: ${countsRes.error.message}`);
+    if (funnelRes.error) console.warn(`Funnel query error (non-fatal): ${funnelRes.error.message}`);
 
     const ads = metaRes.data || [];
+
+    // Map<ad_id, {mql, sql, opp, won}> do funil rastreado
+    const adFunnel = new Map<string, { mql: number; sql: number; opp: number; won: number }>();
+    for (const row of funnelRes.data || []) {
+      adFunnel.set(row.ad_id, {
+        mql: Number(row.mql),
+        sql: Number(row.sql_count),
+        opp: Number(row.opp),
+        won: Number(row.won),
+      });
+    }
 
     // Agregar Pipedrive counts por empreendimento
     const countsMap = new Map<string, Record<string, number>>();
@@ -88,25 +101,37 @@ export async function GET(req: NextRequest) {
 
         // Ordenação dos ads: CPL asc (se leads>0), senão CPC asc (se clicks>0), senão spend desc
         const adsDetail: MetaAdRow[] = empAds
-          .map((r) => ({
-            ad_id: r.ad_id,
-            campaign_name: r.campaign_name || "",
-            adset_name: r.adset_name || "",
-            ad_name: r.ad_name || "",
-            empreendimento: r.empreendimento,
-            squad_id: r.squad_id,
-            impressions: r.impressions || 0,
-            clicks: r.clicks || 0,
-            spend: Number(r.spend),
-            leads: r.leads || 0,
-            cpl: Number(r.cpl),
-            ctr: Number(r.ctr),
-            cpm: Number(r.cpm),
-            frequency: Number(r.frequency),
-            cpc: Number(r.cpc),
-            severidade: r.severidade as "CRITICO" | "ALERTA" | "OK",
-            diagnostico: r.diagnostico || null,
-          }))
+          .map((r) => {
+            const funnel = adFunnel.get(r.ad_id) || { mql: 0, sql: 0, opp: 0, won: 0 };
+            const sp = Number(r.spend);
+            return {
+              ad_id: r.ad_id,
+              campaign_name: r.campaign_name || "",
+              adset_name: r.adset_name || "",
+              ad_name: r.ad_name || "",
+              empreendimento: r.empreendimento,
+              squad_id: r.squad_id,
+              impressions: r.impressions || 0,
+              clicks: r.clicks || 0,
+              spend: sp,
+              leads: r.leads || 0,
+              cpl: Number(r.cpl),
+              ctr: Number(r.ctr),
+              cpm: Number(r.cpm),
+              frequency: Number(r.frequency),
+              cpc: Number(r.cpc),
+              severidade: r.severidade as "CRITICO" | "ALERTA" | "OK",
+              diagnostico: r.diagnostico || null,
+              mql: funnel.mql,
+              sql: funnel.sql,
+              opp: funnel.opp,
+              won: funnel.won,
+              cmql: funnel.mql > 0 ? Math.round((sp / funnel.mql) * 100) / 100 : 0,
+              csql: funnel.sql > 0 ? Math.round((sp / funnel.sql) * 100) / 100 : 0,
+              copp: funnel.opp > 0 ? Math.round((sp / funnel.opp) * 100) / 100 : 0,
+              cpw: funnel.won > 0 ? Math.round((sp / funnel.won) * 100) / 100 : 0,
+            };
+          })
           .sort((a, b) => {
             // Ads sem gasto vão pro final
             if (a.spend === 0 && b.spend > 0) return 1;
@@ -183,25 +208,37 @@ export async function GET(req: NextRequest) {
       })
       .slice(0, 10);
 
-    const top10: MetaAdRow[] = problemAds.map((r) => ({
-      ad_id: r.ad_id,
-      campaign_name: r.campaign_name || "",
-      adset_name: r.adset_name || "",
-      ad_name: r.ad_name || "",
-      empreendimento: r.empreendimento,
-      squad_id: r.squad_id,
-      impressions: r.impressions || 0,
-      clicks: r.clicks || 0,
-      spend: Number(r.spend),
-      leads: r.leads || 0,
-      cpl: Number(r.cpl),
-      ctr: Number(r.ctr),
-      cpm: Number(r.cpm),
-      frequency: Number(r.frequency),
-      cpc: Number(r.cpc),
-      severidade: r.severidade as "CRITICO" | "ALERTA" | "OK",
-      diagnostico: r.diagnostico || null,
-    }));
+    const top10: MetaAdRow[] = problemAds.map((r) => {
+      const funnel = adFunnel.get(r.ad_id) || { mql: 0, sql: 0, opp: 0, won: 0 };
+      const sp = Number(r.spend);
+      return {
+        ad_id: r.ad_id,
+        campaign_name: r.campaign_name || "",
+        adset_name: r.adset_name || "",
+        ad_name: r.ad_name || "",
+        empreendimento: r.empreendimento,
+        squad_id: r.squad_id,
+        impressions: r.impressions || 0,
+        clicks: r.clicks || 0,
+        spend: sp,
+        leads: r.leads || 0,
+        cpl: Number(r.cpl),
+        ctr: Number(r.ctr),
+        cpm: Number(r.cpm),
+        frequency: Number(r.frequency),
+        cpc: Number(r.cpc),
+        severidade: r.severidade as "CRITICO" | "ALERTA" | "OK",
+        diagnostico: r.diagnostico || null,
+        mql: funnel.mql,
+        sql: funnel.sql,
+        opp: funnel.opp,
+        won: funnel.won,
+        cmql: funnel.mql > 0 ? Math.round((sp / funnel.mql) * 100) / 100 : 0,
+        csql: funnel.sql > 0 ? Math.round((sp / funnel.sql) * 100) / 100 : 0,
+        copp: funnel.opp > 0 ? Math.round((sp / funnel.opp) * 100) / 100 : 0,
+        cpw: funnel.won > 0 ? Math.round((sp / funnel.won) * 100) / 100 : 0,
+      };
+    });
 
     const grandMql = squads.reduce((s, sq) => s + sq.totalMql, 0);
     const grandWon = squads.reduce((s, sq) => s + sq.totalWon, 0);

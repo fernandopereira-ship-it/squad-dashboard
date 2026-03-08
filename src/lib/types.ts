@@ -83,6 +83,15 @@ export interface MetaAdRow {
   cpc: number;
   severidade: "OK" | "ALERTA" | "CRITICO";
   diagnostico: string | null;
+  // Funil por ad (rastreamento ad → deal)
+  mql: number;
+  sql: number;
+  opp: number;
+  won: number;
+  cmql: number;
+  csql: number;
+  copp: number;
+  cpw: number;
 }
 
 export interface CampanhasEmpSummary {

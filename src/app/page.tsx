@@ -8,6 +8,7 @@ import { AcompanhamentoView } from "@/components/dashboard/acompanhamento-view";
 import { AlinhamentoView } from "@/components/dashboard/alinhamento-view";
 import { BalanceamentoView } from "@/components/dashboard/balanceamento-view";
 import { CampanhasView } from "@/components/dashboard/campanhas-view";
+import { DiagnosticoMktView } from "@/components/dashboard/diagnostico-mkt-view";
 import { OciosidadeView } from "@/components/dashboard/ociosidade-view";
 import { PresalesView } from "@/components/dashboard/presales-view";
 
@@ -113,6 +114,8 @@ export default function Dashboard() {
       if (!ocioData) fetchOcio();
     } else if (mainView === "campanhas" && !campData) {
       fetchCamp();
+    } else if (mainView === "diagnostico-mkt" && !campData) {
+      fetchCamp();
     } else if (mainView === "presales" && !presalesData) {
       fetchPresales();
     }
@@ -124,6 +127,7 @@ export default function Dashboard() {
     else if (mainView === "ociosidade") fetchOcio();
     else if (mainView === "balanceamento") fetchBalanc();
     else if (mainView === "campanhas") fetchCamp();
+    else if (mainView === "diagnostico-mkt") fetchCamp();
     else if (mainView === "presales") fetchPresales();
   };
 
@@ -144,11 +148,7 @@ export default function Dashboard() {
         {mainView === "balanceamento" && <BalanceamentoView data={balancData} ocioData={ocioData} loading={loading} />}
         {mainView === "campanhas" && <CampanhasView data={campData} loading={loading} />}
         {mainView === "presales" && <PresalesView data={presalesData} loading={loading} />}
-        {mainView === "diagnostico-mkt" && (
-          <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
-            <p style={{ fontSize: "16px" }}>Aba Diagnóstico Mkt — em construção</p>
-          </div>
-        )}
+        {mainView === "diagnostico-mkt" && <DiagnosticoMktView data={campData} loading={loading} />}
         {mainView === "venda" && (
           <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
             <p style={{ fontSize: "16px" }}>Aba Venda — em construção</p>
