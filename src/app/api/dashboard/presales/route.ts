@@ -131,7 +131,7 @@ export async function GET() {
     const presellers: PresellerSummary[] = [];
     for (const [name, pDeals] of byPreseller) {
       const comAcao = pDeals.filter((d) => !d.is_pending);
-      const tempos = comAcao.map((d) => d.biz_minutes);
+      const tempos = pDeals.map((d) => d.biz_minutes);
 
       presellers.push({
         name,
@@ -171,9 +171,7 @@ export async function GET() {
     }));
 
     // Totais globais (apenas deals com ação)
-    const allTempos = dealsWithBizTime
-      .filter((d) => !d.is_pending)
-      .map((d) => d.biz_minutes);
+    const allTempos = dealsWithBizTime.map((d) => d.biz_minutes);
 
     const result: PresalesData = {
       presellers,
