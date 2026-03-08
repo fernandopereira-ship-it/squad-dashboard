@@ -2,10 +2,11 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { T } from "@/lib/constants";
-import type { TabKey, AcompanhamentoData, AlinhamentoData, CampanhasData } from "@/lib/types";
+import type { TabKey, AcompanhamentoData, AlinhamentoData, CampanhasData, RegrasMqlData } from "@/lib/types";
 import { Header } from "@/components/dashboard/header";
 import { AcompanhamentoView } from "@/components/dashboard/acompanhamento-view";
 import { AlinhamentoView } from "@/components/dashboard/alinhamento-view";
+import { BalanceamentoView } from "@/components/dashboard/balanceamento-view";
 import { CampanhasView } from "@/components/dashboard/campanhas-view";
 
 export default function Dashboard() {
@@ -15,6 +16,7 @@ export default function Dashboard() {
   const [acompData, setAcompData] = useState<Record<string, AcompanhamentoData>>({});
   const [alinhData, setAlinhData] = useState<AlinhamentoData | null>(null);
   const [campData, setCampData] = useState<CampanhasData | null>(null);
+  const [balancData, setBalancData] = useState<RegrasMqlData | null>(null);
 
   const fetchAcomp = useCallback(async (tab: TabKey) => {
     setLoading(true);
@@ -56,11 +58,26 @@ export default function Dashboard() {
     }
   }, []);
 
+  const fetchBalanc = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/dashboard/regras-mql");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setBalancData(await res.json());
+    } catch (err) {
+      console.error("Fetch balanc error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (mainView === "acompanhamento" && !acompData[activeTab]) {
       fetchAcomp(activeTab);
     } else if (mainView === "alinhamento" && !alinhData) {
       fetchAlinh();
+    } else if (mainView === "balanceamento" && !balancData) {
+      fetchBalanc();
     } else if (mainView === "campanhas" && !campData) {
       fetchCamp();
     }
@@ -69,6 +86,7 @@ export default function Dashboard() {
   const handleRefresh = () => {
     if (mainView === "acompanhamento") fetchAcomp(activeTab);
     else if (mainView === "alinhamento") fetchAlinh();
+    else if (mainView === "balanceamento") fetchBalanc();
     else if (mainView === "campanhas") fetchCamp();
   };
 
@@ -87,11 +105,12 @@ export default function Dashboard() {
         {mainView === "alinhamento" && <AlinhamentoView data={alinhData} loading={loading} />}
         {mainView === "ociosidade" && (
           <div style={{ textAlign: "center", padding: "80px 20px", color: T.cinza600 }}>
-            <div style={{ fontSize: "40px", marginBottom: "16px" }}>⏳</div>
+            <div style={{ fontSize: "40px", marginBottom: "16px" }}>&#8987;</div>
             <h3 style={{ fontSize: "18px", fontWeight: 600, color: T.fg, margin: "0 0 8px" }}>Ociosidade</h3>
             <p style={{ fontSize: "14px", margin: 0 }}>Em breve — análise de ociosidade dos closers via Google Calendar</p>
           </div>
         )}
+        {mainView === "balanceamento" && <BalanceamentoView data={balancData} loading={loading} />}
         {mainView === "campanhas" && <CampanhasView data={campData} loading={loading} />}
       </div>
     </div>

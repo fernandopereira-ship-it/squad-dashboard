@@ -72,6 +72,32 @@ export const T = {
 } as const;
 
 export const SQUAD_COLORS: Record<number, string> = { 1: T.azul600, 2: T.roxo600, 3: T.teal600 };
+
+// MQL Balanceamento — opções possíveis do Baserow (multi-select fields)
+export const MQL_INTENCOES = [
+  { value: "Investimento - renda com aluguel", label: "Renda" },
+  { value: "Investimento - valorização do imóvel", label: "Valorização" },
+  { value: "Uso próprio - uso esporádico", label: "Esporádico" },
+] as const;
+
+export const MQL_FAIXAS = [
+  { value: "R$ 100.001 a R$ 200.000 em até 54 meses", label: "100-200k" },
+  { value: "R$ 200.001 a R$ 300.000 em até 54 meses", label: "200-300k" },
+  { value: "R$ 300.001 a R$ 400.000 em até 54 meses", label: "300-400k" },
+  { value: "Acima de R$ 400.000 em até 54 meses", label: ">400k" },
+] as const;
+
+export const MQL_PAGAMENTOS = [
+  { value: "À vista via PIX ou boleto", label: "À vista" },
+  { value: "Parcelado via PIX ou boleto", label: "Parcelado" },
+  { value: "Não tenho condição nessas opções", label: "Sem condição" },
+] as const;
+
+export const SQUAD_FROM_COMMERCIAL: Record<string, number> = {
+  szi_01: 1,
+  szi_02: 2,
+  szi_03: 3,
+};
 export const TAB_COLORS: Record<string, string> = {
   mql: T.azul600,
   sql: T.roxo600,

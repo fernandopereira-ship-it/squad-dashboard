@@ -121,3 +121,26 @@ export interface CampanhasData {
   squads: CampanhasSquadSummary[];
   top10: MetaAdRow[];
 }
+
+// Balanceamento — Regras MQL por Empreendimento
+export interface RegrasMqlEmp {
+  nome: string;
+  intencoes: string[];
+  faixas: string[];
+  pagamentos: string[];
+  aberturaIntencoes: number;
+  aberturaFaixas: number;
+  aberturaPagamentos: number;
+  aberturaGeral: number;
+}
+
+export interface RegrasMqlSquad {
+  id: number;
+  name: string;
+  empreendimentos: RegrasMqlEmp[];
+  aberturaMedia: number;
+}
+
+export interface RegrasMqlData {
+  squads: RegrasMqlSquad[];
+}
