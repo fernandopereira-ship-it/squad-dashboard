@@ -5,42 +5,50 @@ Dashboard de acompanhamento de vendas por squads para a Seazone.
 - **Stack:** Next.js 16 + React 19 + TypeScript 5 + Tailwind 4
 - **Deploy:** Vercel (squad-dashboard-eight.vercel.app)
 - **GitHub:** fernandopereira-ship-it/squad-dashboard
-- **Fonte de dados:** Pipedrive API (pipeline 28, Canal Marketing)
+- **Supabase:** ewgqbkdriflarmmifrvs
 
 ## Arquitetura
 ```
-Pipedrive API → API Routes (server-side) → JSON → React Frontend → Vercel
+Pipedrive API → Edge Function (sync-squad-dashboard) → Supabase Tables
+                                ↓ pg_cron (a cada 2h)
+Supabase Tables → API Routes (Next.js) → JSON → React Frontend → Vercel
 ```
 
-## Regras
-- **SEMPRE** filtrar pipeline_id = 28
-- **SEMPRE** filtrar Canal = Marketing (campo `93b3ada8...` == `"12"`)
-- **status = all_not_deleted** nas abas MQL/SQL/OPP/WON (inclui won e lost)
-- **status = open** APENAS no Alinhamento Squad
-- Midnight overflow: para MQL e WON, filtrar localmente pela data estrita
-- Squads são hardcoded em `src/lib/constants.ts`
+## Tabelas Supabase
+| Tabela | Descrição |
+|--------|-----------|
+| squad_daily_counts | Contagens diárias por tab/empreendimento (35 dias) |
+| squad_alignment | Deals abertos por empreendimento × owner |
+| squad_metas | Metas mensais por squad × tab |
+| squad_ratios | Ratios 90d e contagens (1 row por mês) |
 
-## Campos Pipedrive
-| Campo | Key | Field ID |
-|-------|-----|----------|
-| MQL | add_time | 12462 |
-| SQL | bc74bcc4... | 12550 |
-| OPP | bfafc352... | 12608 |
-| WON | won_time | 12467 |
-| Canal | 93b3ada8... | - |
-| Empreendimento | 6d565fd4... | - |
+## Edge Function: sync-squad-dashboard
+- **Modos:** daily (1 tab), alignment, metas, all
+- **Auth:** service_role JWT (via Bearer token)
+- **Token Pipedrive:** lido do Vault via RPC `vault_read_secret`
+- **pg_cron:** 6 jobs separados a cada 2h (minutos :03 a :08)
+
+## Regras
+- Dados vêm do Supabase, NÃO do Pipedrive direto
+- Pipeline 28 + Canal Marketing filtrados na edge function
+- Squads hardcoded em `src/lib/constants.ts`
+- REGRA: WORKER_LIMIT no free tier — edge functions separadas em horários distintos
+- REGRA: Para popular dados iniciais, usar script local (não edge function)
 
 ## Estrutura
 ```
 src/
-  app/page.tsx                    -- Dashboard client component
-  app/api/dashboard/route.ts      -- API principal (tab + alinhamento + metas)
-  components/dashboard/           -- Header, AcompanhamentoView, AlinhamentoView, UI
-  lib/constants.ts                -- Squads, tokens, empreendimentos
-  lib/pipedrive.ts                -- Cliente Pipedrive API
-  lib/types.ts                    -- Interfaces TypeScript
-  lib/dates.ts                    -- Gerador de datas 28d
+  app/page.tsx                              -- Dashboard client component
+  app/api/dashboard/route.ts                -- API principal (tab + metas do Supabase)
+  app/api/dashboard/acompanhamento/route.ts -- Dados de acompanhamento
+  app/api/dashboard/alinhamento/route.ts    -- Dados de alinhamento
+  components/dashboard/                     -- Header, AcompanhamentoView, AlinhamentoView, UI
+  lib/constants.ts                          -- Squads, UI tokens
+  lib/supabase.ts                           -- Cliente Supabase (anon key)
+  lib/types.ts                              -- Interfaces TypeScript
+  lib/dates.ts                              -- Gerador de datas 28d
 ```
 
 ## Env Vars
-- `PIPEDRIVE_API_TOKEN` — Token da API do Pipedrive (Vercel production)
+- `NEXT_PUBLIC_SUPABASE_URL` — URL do Supabase (Vercel + .env.local)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Anon key do Supabase (Vercel + .env.local)

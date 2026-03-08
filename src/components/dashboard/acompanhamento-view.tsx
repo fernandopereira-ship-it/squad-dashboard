@@ -87,7 +87,7 @@ export function AcompanhamentoView({ data, activeTab, setActiveTab, loading }: P
           ))}
         </div>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <Pill label="Total 28d" value={grand.totalMes} />
+          <Pill label="Total mês" value={grand.totalMes} />
           <Pill label="Meta TD" value={grand.metaToDate} />
           <Pill
             label="% Meta"

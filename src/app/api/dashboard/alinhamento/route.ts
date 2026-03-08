@@ -1,13 +1,89 @@
 import { NextResponse } from "next/server";
-import { fetchAlinhamento } from "@/lib/pipedrive";
+import { supabase } from "@/lib/supabase";
+import { SQUADS, PV_COLS, V_COLS } from "@/lib/constants";
+import type { AlinhamentoData } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
 
 export async function GET() {
   try {
-    const data = await fetchAlinhamento();
-    return NextResponse.json(data);
+    // Fetch alignment data from Supabase
+    const { data: alignRows, error } = await supabase
+      .from("squad_alignment")
+      .select("empreendimento, owner_name, count");
+
+    if (error) throw new Error(`Supabase error: ${error.message}`);
+
+    // Build owner counts map: empreendimento → { owner → count }
+    const ownerCounts = new Map<string, Map<string, number>>();
+    for (const row of alignRows || []) {
+      if (!ownerCounts.has(row.empreendimento)) {
+        ownerCounts.set(row.empreendimento, new Map());
+      }
+      ownerCounts.get(row.empreendimento)!.set(row.owner_name, row.count);
+    }
+
+    // Match owner names (case-insensitive partial match)
+    function matchOwner(colName: string, ownerName: string): boolean {
+      return ownerName.toLowerCase().includes(colName.toLowerCase());
+    }
+
+    // Build flat rows
+    const rows = SQUADS.flatMap((sq) =>
+      sq.empreendimentos.map((emp) => {
+        const counts = ownerCounts.get(emp) || new Map<string, number>();
+        const pv: Record<string, number> = {};
+        const v: Record<string, number> = {};
+
+        PV_COLS.forEach((col) => {
+          let total = 0;
+          for (const [owner, count] of counts) {
+            if (matchOwner(col, owner)) total += count;
+          }
+          pv[col] = total;
+        });
+
+        V_COLS.forEach((col) => {
+          let total = 0;
+          for (const [owner, count] of counts) {
+            if (matchOwner(col, owner)) total += count;
+          }
+          v[col] = total;
+        });
+
+        return {
+          sqId: sq.id,
+          sqName: sq.name,
+          emp,
+          correctPV: sq.preVenda,
+          correctV: sq.venda,
+          cells: { pv, v },
+        };
+      })
+    );
+
+    // Stats
+    let total = 0;
+    let mis = 0;
+    rows.forEach((row) => {
+      PV_COLS.forEach((p) => {
+        const val = row.cells.pv[p] || 0;
+        total += val;
+        if (val > 0 && p !== row.correctPV) mis += val;
+      });
+      V_COLS.forEach((p) => {
+        const val = row.cells.v[p] || 0;
+        total += val;
+        if (val > 0 && p !== row.correctV) mis += val;
+      });
+    });
+
+    const result: AlinhamentoData = {
+      rows,
+      stats: { total, ok: total - mis, mis },
+    };
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Alinhamento error:", error);
     return NextResponse.json({ error: String(error) }, { status: 500 });

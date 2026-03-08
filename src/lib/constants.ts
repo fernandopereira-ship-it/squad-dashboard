@@ -1,42 +1,3 @@
-// Pipedrive config
-export const PIPEDRIVE_DOMAIN = "seazone-fd92b9.pipedrive.com";
-export const PIPELINE_ID = 28;
-
-// Pipedrive custom field keys
-export const FIELD_CANAL = "93b3ada8b94bd1fc4898a25754d6bcac2713f835";
-export const FIELD_EMPREENDIMENTO = "6d565fd4fce66c16da078f520a685fa2fa038272";
-export const FIELD_QUALIFICACAO = "bc74bcc4326527cbeb331d1697d4c8812d68506e";
-export const FIELD_REUNIAO = "bfafc352c5c6f2edbaa41bf6d1c6daa825fc9c16";
-export const CANAL_MARKETING_ID = "12";
-
-// Filter field IDs for Pipedrive API
-export const FILTER_FIELD_IDS = {
-  mql: 12462, // add_time
-  sql: 12550, // Data de Qualificação
-  opp: 12608, // Data da reunião
-  won: 12467, // won_time
-} as const;
-
-// Empreendimento enum IDs → names
-export const EMPREENDIMENTO_MAP: Record<string, string> = {
-  "4109": "Ponta das Canas Spot II",
-  "3467": "Itacaré Spot",
-  "2935": "Marista 144 Spot",
-  "4495": "Natal Spot",
-  "4655": "Novo Campeche Spot II",
-  "3416": "Caraguá Spot",
-  "3451": "Bonito Spot II",
-  "3333": "Jurerê Spot II",
-  "4586": "Jurerê Spot III",
-  "3478": "Barra Grande Spot",
-  "637": "Vistas de Anitá II",
-};
-
-// Reverse map: name → enum ID
-export const EMPREENDIMENTO_REVERSE: Record<string, string> = Object.fromEntries(
-  Object.entries(EMPREENDIMENTO_MAP).map(([k, v]) => [v, k])
-);
-
 // Squad definitions
 export const SQUADS = [
   {
@@ -64,9 +25,6 @@ export const SQUADS = [
     empreendimentos: ["Jurerê Spot II", "Jurerê Spot III", "Barra Grande Spot", "Vistas de Anitá II"],
   },
 ] as const;
-
-// All empreendimento names in order
-export const ALL_EMPREENDIMENTOS = SQUADS.flatMap((s) => s.empreendimentos);
 
 // Pre-venda and Venda people for alignment view
 export const PV_COLS = ["Luciana Patrício", "Natália Saramago", "Hellen Dias"];
