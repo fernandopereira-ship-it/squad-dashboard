@@ -53,18 +53,18 @@ function isoWeekLabel(dateStr: string): string {
 
 export async function GET() {
   try {
-    // 1. Get SZI closers
-    const { data: closers, error: closerErr } = await supabase
+    // 1. Get SZI closers (table uses "email", not "closer_email")
+    const { data: rules, error: closerErr } = await supabase
       .from("squad_closer_rules")
-      .select("closer_email, closer_name")
+      .select("email")
       .eq("setor", "SZI");
 
     if (closerErr) throw closerErr;
-    if (!closers || closers.length === 0) {
+    if (!rules || rules.length === 0) {
       return NextResponse.json({ closers: [], dates: [], syncedAt: new Date().toISOString() });
     }
 
-    const emails = closers.map((c) => c.closer_email);
+    const emails = rules.map((c) => c.email);
 
     // 2. Date window: 21 business days back + 14 business days forward
     const today = new Date();
@@ -75,10 +75,10 @@ export async function GET() {
     const windowEnd = new Date(today);
     windowEnd.setDate(windowEnd.getDate() + 20); // ~14 business days
 
-    // 3. Query events
+    // 3. Query events (also grab closer_name for display)
     const { data: events, error: evtErr } = await supabase
       .from("squad_calendar_events")
-      .select("closer_email, dia, duracao_min, cancelou")
+      .select("closer_email, closer_name, dia, duracao_min, cancelou")
       .in("closer_email", emails)
       .eq("cancelou", false)
       .gte("dia", formatDate(windowStart))
@@ -140,10 +140,19 @@ export async function GET() {
     // 6. All business days in the window (for historical calculations)
     const allBizDays = getBusinessDays(windowStart, windowEnd);
 
+    // 6b. Build email→name map from events
+    const nameMap = new Map<string, string>();
+    for (const evt of events || []) {
+      if (evt.closer_name && !nameMap.has(evt.closer_email)) {
+        nameMap.set(evt.closer_email, evt.closer_name);
+      }
+    }
+
     // 7. Build closer data
-    const result: OciosidadeCloser[] = closers.map((c) => {
-      const emailMap = agg.get(c.closer_email) || new Map();
-      const squadId = getSquadId(c.closer_name);
+    const result: OciosidadeCloser[] = emails.map((email) => {
+      const emailMap = agg.get(email) || new Map();
+      const name = nameMap.get(email) || email.split("@")[0].replace(".", " ");
+      const squadId = getSquadId(name);
 
       // Days for display
       const days: OciosidadeDay[] = displayDays.map((ds) => {
@@ -200,7 +209,7 @@ export async function GET() {
       }
       if (minWeek.weekLabel === "-") minWeek = { weekLabel: "-", avg: 0 };
 
-      return { email: c.closer_email, name: c.closer_name, squadId, days, avgPast7, avgNext7, avgHistorical, maxWeek, minWeek };
+      return { email, name, squadId, days, avgPast7, avgNext7, avgHistorical, maxWeek, minWeek };
     });
 
     // Sort by squad, then name
