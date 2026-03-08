@@ -88,6 +88,34 @@ export function OciosidadeView({ data, loading }: Props) {
 
   return (
     <>
+      {/* Disclaimer: sync manual */}
+      <div
+        style={{
+          backgroundColor: "#FEF3C7",
+          border: "2px solid #F59E0B",
+          borderRadius: "12px",
+          padding: "14px 18px",
+          marginBottom: "16px",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+        }}
+      >
+        <span style={{ fontSize: "24px", flexShrink: 0 }}>&#9888;</span>
+        <div>
+          <div style={{ fontSize: "14px", fontWeight: 700, color: "#92400E", marginBottom: "2px" }}>
+            Base atualizada manualmente
+          </div>
+          <div style={{ fontSize: "12px", color: "#92400E", lineHeight: 1.4 }}>
+            Os dados de agenda precisam ser atualizados rodando o comando{" "}
+            <code style={{ backgroundColor: "#FDE68A", padding: "2px 6px", borderRadius: "4px", fontWeight: 600, fontSize: "12px" }}>
+              /agenda-check-supabase
+            </code>{" "}
+            localmente no Claude Code. Lembre-se de rodar antes de analisar os dados.
+          </div>
+        </div>
+      </div>
+
       {/* Section 1: KPI Cards */}
       <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
         {closers.map((c) => {
