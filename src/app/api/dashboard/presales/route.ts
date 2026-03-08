@@ -157,8 +157,13 @@ export async function GET() {
     const presellers: PresellerSummary[] = [];
     for (const [name, pDeals] of byPreseller) {
       const comAcao = pDeals.filter((d) => !d.is_pending);
-      // Incluir todos deals EXCETO pendentes com 0 min úteis (transbordo no FDS, sem horário útil ainda)
-      const tempos = pDeals.filter((d) => !d.is_pending || d.biz_minutes > 0).map((d) => d.biz_minutes);
+      // Pass 1: mediana base dos deals COM ação (tempo definitivo)
+      const baseTempos = comAcao.map((d) => d.biz_minutes);
+      const baseMedian = median(baseTempos);
+      // Pass 2: pendentes só entram se biz_minutes > baseMedian (nunca puxam mediana pra baixo)
+      const tempos = pDeals
+        .filter((d) => !d.is_pending || d.biz_minutes > baseMedian)
+        .map((d) => d.biz_minutes);
 
       presellers.push({
         name,
@@ -197,10 +202,11 @@ export async function GET() {
       action_type: d.action_type,
     }));
 
-    // Totais globais (apenas deals com ação)
-    // Excluir pendentes com 0 min úteis (transbordo fora de horário útil, sem tempo contável ainda)
+    // Totais globais: mediana progressiva (pendentes só entram se > mediana base)
+    const allBaseTempos = dealsWithBizTime.filter((d) => !d.is_pending).map((d) => d.biz_minutes);
+    const allBaseMedian = median(allBaseTempos);
     const allTempos = dealsWithBizTime
-      .filter((d) => !d.is_pending || d.biz_minutes > 0)
+      .filter((d) => !d.is_pending || d.biz_minutes > allBaseMedian)
       .map((d) => d.biz_minutes);
 
     const result: PresalesData = {
