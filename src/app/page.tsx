@@ -14,50 +14,55 @@ export default function Dashboard() {
   const [acompData, setAcompData] = useState<Record<string, AcompanhamentoData>>({});
   const [alinhData, setAlinhData] = useState<AlinhamentoData | null>(null);
 
-  const fetchData = useCallback(
-    async (tab?: TabKey) => {
-      const currentTab = tab || activeTab;
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/dashboard?tab=${currentTab}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (data.acompanhamento?.[currentTab]) {
-          setAcompData((prev) => ({ ...prev, [currentTab]: data.acompanhamento[currentTab] }));
-        }
-        if (data.alinhamento) {
-          setAlinhData(data.alinhamento);
-        }
-      } catch (err) {
-        console.error("Fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [activeTab]
-  );
-
-  // Auto-fetch on mount and tab change
-  useEffect(() => {
-    if (!acompData[activeTab]) {
-      fetchData(activeTab);
+  const fetchAcomp = useCallback(async (tab: TabKey) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/dashboard?tab=${tab}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setAcompData((prev) => ({ ...prev, [tab]: data }));
+    } catch (err) {
+      console.error("Fetch acomp error:", err);
+    } finally {
+      setLoading(false);
     }
-  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleTabChange = (tab: TabKey) => {
-    setActiveTab(tab);
+  const fetchAlinh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/dashboard/alinhamento");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setAlinhData(await res.json());
+    } catch (err) {
+      console.error("Fetch alinh error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mainView === "acompanhamento" && !acompData[activeTab]) {
+      fetchAcomp(activeTab);
+    } else if (mainView === "alinhamento" && !alinhData) {
+      fetchAlinh();
+    }
+  }, [activeTab, mainView]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleRefresh = () => {
+    if (mainView === "acompanhamento") fetchAcomp(activeTab);
+    else fetchAlinh();
   };
 
   return (
     <div style={{ fontFamily: T.font, backgroundColor: T.cinza50, minHeight: "100vh", letterSpacing: "0.02em" }}>
-      <Header mainView={mainView} setMainView={setMainView} onRefresh={() => fetchData()} loading={loading} />
-
+      <Header mainView={mainView} setMainView={setMainView} onRefresh={handleRefresh} loading={loading} />
       <div style={{ padding: "16px 20px", maxWidth: "2200px", margin: "0 auto" }}>
         {mainView === "acompanhamento" ? (
           <AcompanhamentoView
             data={acompData[activeTab] || null}
             activeTab={activeTab}
-            setActiveTab={handleTabChange}
+            setActiveTab={(tab: TabKey) => setActiveTab(tab)}
             loading={loading}
           />
         ) : (
