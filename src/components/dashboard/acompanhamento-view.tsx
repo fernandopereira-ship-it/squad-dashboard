@@ -87,7 +87,7 @@ export function AcompanhamentoView({ data, activeTab, setActiveTab, loading }: P
           ))}
         </div>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <Pill label="Total mês" value={grand.totalMes} />
+          <Pill label="Total mês" value={grand.totalMes} color={grand.totalMes >= grand.metaToDate ? T.verde600 : T.destructive} />
           <Pill label="Meta TD" value={grand.metaToDate} />
           <Pill
             label="% Meta"
@@ -257,8 +257,8 @@ export function AcompanhamentoView({ data, activeTab, setActiveTab, loading }: P
                       </td>
                     )}
                     <td style={{ ...cellStyle, fontWeight: 600, color: T.cinza600 }}>TOTAL</td>
-                    <td style={{ ...cellRightStyle, fontWeight: 700, color: T.primary }}>{sqTm}</td>
-                    <td style={{ ...cellRightStyle, fontWeight: 600 }}>{sq.metaToDate}</td>
+                    <td style={{ ...cellRightStyle, fontWeight: 700, color: sqTm >= sq.metaToDate ? T.verde600 : T.destructive }}>{sqTm}</td>
+                    <td style={{ ...cellRightStyle, fontWeight: 600 }}>{Math.round(sq.metaToDate)}</td>
                     {sqD.map((v, i) => (
                       <td
                         key={i}
@@ -319,8 +319,8 @@ export function AcompanhamentoView({ data, activeTab, setActiveTab, loading }: P
                 <td colSpan={showTeamCols ? 5 : 3} style={{ ...cellStyle, fontWeight: 700, color: T.primaryFg }}>
                   TOTAL GERAL
                 </td>
-                <td style={{ ...cellRightStyle, fontWeight: 700, color: T.primaryFg }}>{grand.totalMes}</td>
-                <td style={{ ...cellRightStyle, fontWeight: 700, color: T.primaryFg }}>{grand.metaToDate}</td>
+                <td style={{ ...cellRightStyle, fontWeight: 700, color: grand.totalMes >= grand.metaToDate ? "#4ADE80" : "#FCA5A5" }}>{grand.totalMes}</td>
+                <td style={{ ...cellRightStyle, fontWeight: 700, color: T.primaryFg }}>{Math.round(grand.metaToDate)}</td>
                 {grand.daily.map((v, i) => (
                   <td
                     key={i}
