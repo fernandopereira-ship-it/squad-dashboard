@@ -239,8 +239,8 @@ function FonteDetailRow({ fonte }: { fonte: RegrasMqlFonte }) {
 }
 
 function EmpRow({ emp }: { emp: RegrasMqlEmp }) {
-  const [expanded, setExpanded] = useState(false);
   const hasSingleFonte = emp.fontes.length === 1;
+  const [expanded, setExpanded] = useState(!hasSingleFonte);
 
   return (
     <>
