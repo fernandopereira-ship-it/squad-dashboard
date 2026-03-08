@@ -57,7 +57,10 @@ export function PresalesView({ data, loading }: Props) {
   }
 
   const { presellers, recentDeals, totals } = data;
-  const mainPVs = presellers.filter((p) => MAIN_PVS.includes(p.name));
+  const pvOrder = ["Luciana Patrício", "Luciana Patricio", "Natália Saramago", "Hellen Dias", "Jeniffer Correa"];
+  const mainPVs = pvOrder
+    .map((n) => presellers.find((p) => p.name === n))
+    .filter((p): p is PresellerSummary => p != null);
 
   return (
     <>
@@ -80,8 +83,8 @@ export function PresalesView({ data, loading }: Props) {
         <CalcDisclaimer />
       </div>
 
-      {/* 4 Cards grandes — PVs principais */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "14px", marginBottom: "20px" }}>
+      {/* Cards PVs — coluna vertical */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
         {mainPVs.map((ps) => (
           <BigPVCard key={ps.name} ps={ps} />
         ))}
@@ -225,12 +228,13 @@ function CalcDisclaimer() {
   );
 }
 
-// --- Card grande PV dos squads ---
+// --- Card horizontal PV dos squads ---
 function BigPVCard({ ps }: { ps: PresellerSummary }) {
   const squad = SQUADS.find((s) => s.preVenda === ps.name);
   const sqColor = ps.squadId ? SQUAD_COLORS[ps.squadId] || T.azul600 : T.cinza600;
   const medColor = statusColor(ps.medianMinutes);
   const medBg = statusBg(ps.medianMinutes);
+  const barColor = ps.pctSub30 >= 70 ? "#16a34a" : ps.pctSub30 >= 40 ? "#d97706" : "#dc2626";
 
   return (
     <div
@@ -240,63 +244,70 @@ function BigPVCard({ ps }: { ps: PresellerSummary }) {
         border: `1px solid ${T.border}`,
         boxShadow: T.elevSm,
         overflow: "hidden",
+        display: "flex",
+        flexDirection: "row",
       }}
     >
-      {/* Header */}
-      <div style={{ padding: "10px 16px", backgroundColor: sqColor, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ color: "#fff", fontWeight: 700, fontSize: "14px" }}>{ps.name}</span>
+      {/* Lado esquerdo: header colorido vertical */}
+      <div
+        style={{
+          backgroundColor: sqColor,
+          width: "180px",
+          minWidth: "180px",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: "14px 12px",
+          gap: "4px",
+        }}
+      >
+        <span style={{ color: "#fff", fontWeight: 700, fontSize: "14px", textAlign: "center" }}>{ps.name}</span>
         {squad && <span style={{ color: "rgba(255,255,255,0.75)", fontSize: "11px" }}>{squad.name}</span>}
       </div>
 
-      {/* Mediana central */}
-      <div style={{ textAlign: "center", padding: "18px 16px 10px" }}>
+      {/* Centro: mediana + barra */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "14px 20px" }}>
         <div style={{ fontSize: "10px", color: T.cinza600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>
           Mediana
         </div>
         <div
           style={{
             display: "inline-block",
-            padding: "6px 20px",
-            borderRadius: "12px",
+            padding: "4px 16px",
+            borderRadius: "10px",
             backgroundColor: medBg,
             color: medColor,
-            fontSize: "28px",
+            fontSize: "24px",
             fontWeight: 800,
             fontVariantNumeric: "tabular-nums",
+            marginBottom: "8px",
           }}
         >
           {formatMinutes(ps.medianMinutes)}
         </div>
-      </div>
-
-      {/* Barra ≤30min */}
-      <div style={{ padding: "0 16px 12px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-          <span style={{ fontSize: "11px", color: T.cinza600 }}>≤30min</span>
-          <span style={{ fontSize: "11px", fontWeight: 700, color: ps.pctSub30 >= 70 ? "#16a34a" : ps.pctSub30 >= 40 ? "#d97706" : "#dc2626" }}>
-            {ps.pctSub30}%
-          </span>
-        </div>
-        <div style={{ height: "8px", backgroundColor: "#f3f4f6", borderRadius: "4px", overflow: "hidden" }}>
-          <div
-            style={{
-              height: "100%",
-              width: `${ps.pctSub30}%`,
-              backgroundColor: ps.pctSub30 >= 70 ? "#16a34a" : ps.pctSub30 >= 40 ? "#d97706" : "#dc2626",
-              borderRadius: "4px",
-              transition: "width 0.3s ease",
-            }}
-          />
+        <div style={{ width: "100%", maxWidth: "180px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
+            <span style={{ fontSize: "10px", color: T.cinza600 }}>≤30min</span>
+            <span style={{ fontSize: "10px", fontWeight: 700, color: barColor }}>{ps.pctSub30}%</span>
+          </div>
+          <div style={{ height: "6px", backgroundColor: "#f3f4f6", borderRadius: "3px", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${ps.pctSub30}%`, backgroundColor: barColor, borderRadius: "3px", transition: "width 0.3s ease" }} />
+          </div>
         </div>
       </div>
 
-      {/* Stats footer */}
+      {/* Direita: stats */}
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
-          borderTop: `1px solid ${T.border}`,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          borderLeft: `1px solid ${T.border}`,
           backgroundColor: "#fafafa",
+          padding: "10px 20px",
+          gap: "6px",
+          minWidth: "120px",
         }}
       >
         <FooterStat label="Total" value={ps.totalDeals} />
