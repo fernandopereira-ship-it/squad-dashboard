@@ -81,14 +81,62 @@ export async function GET(req: NextRequest) {
       const empreendimentos: CampanhasEmpSummary[] = sq.empreendimentos.map((emp) => {
         const empAds = empMap.get(emp) || [];
         const spend = empAds.reduce((s, r) => s + Number(r.spend), 0);
+        const impressions = empAds.reduce((s, r) => s + (r.impressions || 0), 0);
+        const clicks = empAds.reduce((s, r) => s + (r.clicks || 0), 0);
         const leads = empAds.reduce((s, r) => s + (r.leads || 0), 0);
         const counts = countsMap.get(emp) || { mql: 0, sql: 0, opp: 0, won: 0 };
+
+        // Ordenação dos ads: CPL asc (se leads>0), senão CPC asc (se clicks>0), senão spend desc
+        const adsDetail: MetaAdRow[] = empAds
+          .map((r) => ({
+            ad_id: r.ad_id,
+            campaign_name: r.campaign_name || "",
+            adset_name: r.adset_name || "",
+            ad_name: r.ad_name || "",
+            empreendimento: r.empreendimento,
+            squad_id: r.squad_id,
+            impressions: r.impressions || 0,
+            clicks: r.clicks || 0,
+            spend: Number(r.spend),
+            leads: r.leads || 0,
+            cpl: Number(r.cpl),
+            ctr: Number(r.ctr),
+            cpm: Number(r.cpm),
+            frequency: Number(r.frequency),
+            cpc: Number(r.cpc),
+            severidade: r.severidade as "CRITICO" | "ALERTA" | "OK",
+            diagnostico: r.diagnostico || null,
+          }))
+          .sort((a, b) => {
+            // Ads sem gasto vão pro final
+            if (a.spend === 0 && b.spend > 0) return 1;
+            if (b.spend === 0 && a.spend > 0) return -1;
+            // CPL asc se ambos têm leads
+            if (a.leads > 0 && b.leads > 0) return a.cpl - b.cpl;
+            // Quem tem leads vem antes
+            if (a.leads > 0 && b.leads === 0) return -1;
+            if (b.leads > 0 && a.leads === 0) return 1;
+            // CPC asc se ambos têm clicks
+            if (a.clicks > 0 && b.clicks > 0) return a.cpc - b.cpc;
+            // Quem tem clicks vem antes
+            if (a.clicks > 0 && b.clicks === 0) return -1;
+            if (b.clicks > 0 && a.clicks === 0) return 1;
+            // Spend desc
+            return b.spend - a.spend;
+          });
+
         return {
           emp,
           ads: empAds.length,
           spend: Math.round(spend * 100) / 100,
+          impressions,
+          clicks,
           leads,
           cpl: leads > 0 ? Math.round((spend / leads) * 100) / 100 : 0,
+          cpc: clicks > 0 ? Math.round((spend / clicks) * 100) / 100 : 0,
+          cmql: counts.mql > 0 ? Math.round((spend / counts.mql) * 100) / 100 : 0,
+          csql: counts.sql > 0 ? Math.round((spend / counts.sql) * 100) / 100 : 0,
+          copp: counts.opp > 0 ? Math.round((spend / counts.opp) * 100) / 100 : 0,
           criticos: empAds.filter((r) => r.severidade === "CRITICO").length,
           alertas: empAds.filter((r) => r.severidade === "ALERTA").length,
           mql: counts.mql,
@@ -96,6 +144,7 @@ export async function GET(req: NextRequest) {
           opp: counts.opp,
           won: counts.won,
           cpw: counts.won > 0 ? Math.round((spend / counts.won) * 100) / 100 : 0,
+          adsDetail,
         };
       });
 

@@ -89,8 +89,14 @@ export interface CampanhasEmpSummary {
   emp: string;
   ads: number;
   spend: number;
+  impressions: number;
+  clicks: number;
   leads: number;
   cpl: number;
+  cpc: number;
+  cmql: number;
+  csql: number;
+  copp: number;
   criticos: number;
   alertas: number;
   mql: number;
@@ -98,6 +104,7 @@ export interface CampanhasEmpSummary {
   opp: number;
   won: number;
   cpw: number;
+  adsDetail: MetaAdRow[];
 }
 
 export interface CampanhasSquadSummary {

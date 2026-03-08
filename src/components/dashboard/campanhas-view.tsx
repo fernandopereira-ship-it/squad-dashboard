@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { T, SQUAD_COLORS } from "@/lib/constants";
-import type { CampanhasData } from "@/lib/types";
+import type { CampanhasData, MetaAdRow } from "@/lib/types";
 import { StatPill } from "./ui";
 
 interface Props {
@@ -14,6 +15,8 @@ function formatBRL(v: number): string {
 }
 
 export function CampanhasView({ data, loading }: Props) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
   if (loading && !data) {
     return (
       <div style={{ textAlign: "center", padding: "60px", color: T.cinza600 }}>
@@ -30,11 +33,16 @@ export function CampanhasView({ data, loading }: Props) {
     );
   }
 
-  const { summary, squads, top10, snapshotDate } = data;
+  const { summary, squads, snapshotDate } = data;
+
+  const toggleExpand = (sqId: number, emp: string) => {
+    const key = `${sqId}:${emp}`;
+    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   return (
     <>
-      {/* Summary cards — mês atual */}
+      {/* Summary cards */}
       <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
         <BrlPill label="Investimento" value={summary.totalSpend} />
         <StatPill label="Leads" value={summary.totalLeads} color={T.verde600} />
@@ -100,6 +108,7 @@ export function CampanhasView({ data, loading }: Props) {
                     <th style={{ ...thStyle, textAlign: "right" }}>Leads</th>
                     <th style={{ ...thStyle, textAlign: "right" }}>CPL</th>
                     <th style={{ ...thStyle, textAlign: "right" }}>MQL</th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>CMQL</th>
                     <th style={{ ...thStyle, textAlign: "right" }}>SQL</th>
                     <th style={{ ...thStyle, textAlign: "right" }}>OPP</th>
                     <th style={{ ...thStyle, textAlign: "right" }}>WON</th>
@@ -107,44 +116,66 @@ export function CampanhasView({ data, loading }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {sq.empreendimentos.map((emp) => (
-                    <tr
-                      key={emp.emp}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = T.cinza50)}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
-                    >
-                      <td style={{ ...tdStyle, color: T.cinza800 }}>{emp.emp}</td>
-                      <td style={{ ...tdStyle, textAlign: "right" }}>{emp.spend > 0 ? formatBRL(emp.spend) : "-"}</td>
-                      <td style={{ ...tdStyle, textAlign: "right", fontWeight: emp.leads > 0 ? 600 : 400 }}>
-                        {emp.leads > 0 ? emp.leads : "-"}
-                      </td>
-                      <td style={{ ...tdStyle, textAlign: "right" }}>
-                        {emp.cpl > 0 ? formatBRL(emp.cpl) : "-"}
-                      </td>
-                      <td style={{ ...tdStyle, textAlign: "right", fontWeight: emp.mql > 0 ? 600 : 400 }}>
-                        {emp.mql > 0 ? emp.mql : "-"}
-                      </td>
-                      <td style={{ ...tdStyle, textAlign: "right" }}>
-                        {emp.sql > 0 ? emp.sql : "-"}
-                      </td>
-                      <td style={{ ...tdStyle, textAlign: "right" }}>
-                        {emp.opp > 0 ? emp.opp : "-"}
-                      </td>
-                      <td
-                        style={{
-                          ...tdStyle,
-                          textAlign: "right",
-                          fontWeight: emp.won > 0 ? 700 : 400,
-                          color: emp.won > 0 ? T.verde700 : T.cinza300,
-                        }}
-                      >
-                        {emp.won > 0 ? emp.won : "-"}
-                      </td>
-                      <td style={{ ...tdStyle, textAlign: "right", fontWeight: emp.cpw > 0 ? 600 : 400 }}>
-                        {emp.cpw > 0 ? formatBRL(emp.cpw) : "-"}
-                      </td>
-                    </tr>
-                  ))}
+                  {sq.empreendimentos.map((emp) => {
+                    const key = `${sq.id}:${emp.emp}`;
+                    const isOpen = !!expanded[key];
+                    const hasAds = emp.adsDetail && emp.adsDetail.length > 0;
+
+                    return (
+                      <>
+                        <tr
+                          key={emp.emp}
+                          onClick={() => hasAds && toggleExpand(sq.id, emp.emp)}
+                          style={{ cursor: hasAds ? "pointer" : "default" }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = T.cinza50)}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+                        >
+                          <td style={{ ...tdStyle, color: T.cinza800 }}>
+                            {hasAds && (
+                              <span style={{ display: "inline-block", width: "16px", fontSize: "10px", color: T.cinza400 }}>
+                                {isOpen ? "▼" : "▶"}
+                              </span>
+                            )}
+                            {!hasAds && <span style={{ display: "inline-block", width: "16px" }} />}
+                            {emp.emp}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>{emp.spend > 0 ? formatBRL(emp.spend) : "-"}</td>
+                          <td style={{ ...tdStyle, textAlign: "right", fontWeight: emp.leads > 0 ? 600 : 400 }}>
+                            {emp.leads > 0 ? emp.leads : "-"}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            {emp.cpl > 0 ? formatBRL(emp.cpl) : "-"}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", fontWeight: emp.mql > 0 ? 600 : 400 }}>
+                            {emp.mql > 0 ? emp.mql : "-"}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            {emp.cmql > 0 ? formatBRL(emp.cmql) : "-"}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            {emp.sql > 0 ? emp.sql : "-"}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            {emp.opp > 0 ? emp.opp : "-"}
+                          </td>
+                          <td
+                            style={{
+                              ...tdStyle,
+                              textAlign: "right",
+                              fontWeight: emp.won > 0 ? 700 : 400,
+                              color: emp.won > 0 ? T.verde700 : T.cinza300,
+                            }}
+                          >
+                            {emp.won > 0 ? emp.won : "-"}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", fontWeight: emp.cpw > 0 ? 600 : 400 }}>
+                            {emp.cpw > 0 ? formatBRL(emp.cpw) : "-"}
+                          </td>
+                        </tr>
+                        {isOpen && hasAds && <AdRows ads={emp.adsDetail} />}
+                      </>
+                    );
+                  })}
                 </tbody>
               </table>
             ) : (
@@ -156,73 +187,90 @@ export function CampanhasView({ data, loading }: Props) {
         );
       })}
 
-      {/* Top 10 */}
-      {top10.length > 0 && (
-        <div style={{ marginTop: "8px" }}>
-          <h3
-            style={{
-              fontSize: "15px",
-              fontWeight: 600,
-              color: T.fg,
-              marginBottom: "12px",
-            }}
-          >
-            Top 10 — Ação Imediata
-          </h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {top10.map((ad, i) => {
-              const isCritico = ad.severidade === "CRITICO";
-              const bgColor = isCritico ? T.vermelho50 : "#FEF3C7";
-              const borderColor = isCritico ? T.destructive : T.laranja500;
-              const sqName = squads.find((s) => s.id === ad.squad_id)?.name || `Squad ${ad.squad_id}`;
-              const diagnosticos = ad.diagnostico?.split(" | ").filter(Boolean) || [];
-
-              return (
-                <div
-                  key={ad.ad_id}
-                  style={{
-                    backgroundColor: bgColor,
-                    borderLeft: `4px solid ${borderColor}`,
-                    borderRadius: "10px",
-                    padding: "14px 16px",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                    <span style={{ fontSize: "11px", color: T.cinza600 }}>
-                      #{i + 1} · {sqName} · {ad.empreendimento} · {ad.severidade}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: "14px", fontWeight: 600, color: T.fg, marginBottom: "8px" }}>
-                    {ad.ad_name}
-                  </div>
-                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: diagnosticos.length > 0 ? "8px" : 0 }}>
-                    <MetricChip label="Gasto" value={formatBRL(ad.spend)} />
-                    <MetricChip label="Leads" value={String(ad.leads)} />
-                    <MetricChip label="CPL" value={ad.cpl > 0 ? formatBRL(ad.cpl) : "-"} />
-                    <MetricChip label="CTR" value={`${ad.ctr.toFixed(2)}%`} />
-                    <MetricChip label="Freq" value={ad.frequency.toFixed(1)} />
-                  </div>
-                  {diagnosticos.length > 0 && (
-                    <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "12px", color: T.cinza700 }}>
-                      {diagnosticos.map((d, di) => (
-                        <li key={di} style={{ marginBottom: "2px" }}>
-                          {d}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       <div style={{ marginTop: "10px", textAlign: "right" }}>
         <span style={{ fontSize: "11px", color: T.cinza400 }}>
           Meta Ads · Conta SZI · {monthLabel(snapshotDate)}
         </span>
       </div>
+    </>
+  );
+}
+
+function AdRows({ ads }: { ads: MetaAdRow[] }) {
+  return (
+    <>
+      {/* Sub-header */}
+      <tr style={{ backgroundColor: "#F8F8FA" }}>
+        <td style={{ ...subThStyle, paddingLeft: "32px" }}>Ad Name</td>
+        <td style={subThStyle}>Gasto</td>
+        <td style={subThStyle}>Impressões</td>
+        <td style={subThStyle}>Clicks</td>
+        <td style={subThStyle}>Leads</td>
+        <td style={subThStyle}>CPL</td>
+        <td style={subThStyle}>CPC</td>
+        <td style={subThStyle}>CTR</td>
+        <td colSpan={2} style={subThStyle}>Severidade</td>
+      </tr>
+      {ads.map((ad) => {
+        const sevColor =
+          ad.severidade === "CRITICO" ? T.destructive : ad.severidade === "ALERTA" ? T.laranja500 : T.verde600;
+        return (
+          <tr
+            key={ad.ad_id}
+            style={{ backgroundColor: "#FAFBFC" }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#F0F1F4")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#FAFBFC")}
+          >
+            <td
+              style={{
+                ...tdStyle,
+                paddingLeft: "32px",
+                fontSize: "12px",
+                color: T.cinza700,
+                maxWidth: "260px",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+              title={ad.ad_name}
+            >
+              {ad.ad_name}
+            </td>
+            <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px" }}>
+              {ad.spend > 0 ? formatBRL(ad.spend) : "-"}
+            </td>
+            <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px" }}>
+              {ad.impressions > 0 ? ad.impressions.toLocaleString("pt-BR") : "-"}
+            </td>
+            <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px" }}>
+              {ad.clicks > 0 ? ad.clicks.toLocaleString("pt-BR") : "-"}
+            </td>
+            <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px", fontWeight: ad.leads > 0 ? 600 : 400 }}>
+              {ad.leads > 0 ? ad.leads : "-"}
+            </td>
+            <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px" }}>
+              {ad.cpl > 0 ? formatBRL(ad.cpl) : "-"}
+            </td>
+            <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px" }}>
+              {ad.cpc > 0 ? formatBRL(ad.cpc) : "-"}
+            </td>
+            <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px" }}>
+              {ad.ctr > 0 ? `${ad.ctr.toFixed(2)}%` : "-"}
+            </td>
+            <td
+              colSpan={2}
+              style={{
+                ...tdStyle,
+                textAlign: "right",
+                fontSize: "11px",
+                fontWeight: 600,
+                color: sevColor,
+              }}
+            >
+              {ad.severidade}
+            </td>
+          </tr>
+        );
+      })}
     </>
   );
 }
@@ -258,22 +306,6 @@ function BrlPill({ label, value }: { label: string; value: number }) {
   );
 }
 
-function MetricChip({ label, value }: { label: string; value: string }) {
-  return (
-    <span
-      style={{
-        backgroundColor: "rgba(0,0,0,0.06)",
-        padding: "2px 8px",
-        borderRadius: "4px",
-        fontSize: "12px",
-        color: T.cinza700,
-      }}
-    >
-      {label}: {value}
-    </span>
-  );
-}
-
 const thStyle: React.CSSProperties = {
   padding: "8px 10px",
   fontSize: "10px",
@@ -284,6 +316,18 @@ const thStyle: React.CSSProperties = {
   textTransform: "uppercase",
   whiteSpace: "nowrap",
   backgroundColor: "#F3F3F5",
+};
+
+const subThStyle: React.CSSProperties = {
+  padding: "5px 10px",
+  fontSize: "9px",
+  fontWeight: 500,
+  color: "#9B9DB0",
+  borderBottom: "1px solid #EDEDF0",
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  whiteSpace: "nowrap",
+  textAlign: "right",
 };
 
 const tdStyle: React.CSSProperties = {
