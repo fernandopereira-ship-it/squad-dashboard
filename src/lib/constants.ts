@@ -30,6 +30,13 @@ export const SQUADS = [
 export const PV_COLS = ["Luciana Patrício", "Natália Saramago", "Hellen Dias"];
 export const V_COLS = ["Laura", "Camila Santos", "Filipe Padoveze", "Luana Schaikoski", "Priscila Pestana Perrone"];
 
+// Squad → índices em V_COLS (quais closers pertencem a cada squad)
+export const SQUAD_V_MAP: Record<number, number[]> = {
+  1: [0],    // Laura
+  2: [1, 2], // Camila Santos, Filipe Padoveze
+  3: [3, 4], // Luana Schaikoski, Priscila Pestana Perrone
+};
+
 // UI Tokens
 export const T = {
   primary: "#0055FF",

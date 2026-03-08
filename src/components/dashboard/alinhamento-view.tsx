@@ -1,6 +1,6 @@
 "use client";
 
-import { T, SQUAD_COLORS, PV_COLS, V_COLS } from "@/lib/constants";
+import { T, SQUAD_COLORS, PV_COLS, V_COLS, SQUAD_V_MAP } from "@/lib/constants";
 import type { AlinhamentoData } from "@/lib/types";
 import { StatPill, tdStyle, thBaseStyle } from "./ui";
 
@@ -110,7 +110,7 @@ export function AlinhamentoView({ data, loading }: Props) {
                     style={{
                       ...thBaseStyle,
                       textAlign: "right",
-                      minWidth: 110,
+                      width: `${100 / (PV_COLS.length + V_COLS.length + 2)}%`,
                       borderLeft: i === 0 ? `1px solid ${T.cinza200}` : undefined,
                     }}
                   >
@@ -123,7 +123,7 @@ export function AlinhamentoView({ data, loading }: Props) {
                     style={{
                       ...thBaseStyle,
                       textAlign: "right",
-                      minWidth: 100,
+                      width: `${100 / (PV_COLS.length + V_COLS.length + 2)}%`,
                       borderLeft: i === 0 ? `2px solid ${T.cinza300}` : undefined,
                     }}
                   >
@@ -138,7 +138,7 @@ export function AlinhamentoView({ data, loading }: Props) {
                 const isFirst = ri === 0 || rows[ri - 1].sqId !== row.sqId;
                 const isLast = ri === rows.length - 1 || rows[ri + 1]?.sqId !== row.sqId;
                 const sqPVIdx = PV_COLS.indexOf(row.correctPV);
-                const sqVIdx = V_COLS.indexOf(row.correctV);
+                const sqVIndices = SQUAD_V_MAP[row.sqId] || [];
 
                 return (
                   <tr
@@ -180,7 +180,9 @@ export function AlinhamentoView({ data, loading }: Props) {
                     })}
                     {V_COLS.map((p, vi) => {
                       const val = row.cells.v[p] || 0;
-                      const isZone = vi === sqVIdx;
+                      const isZone = sqVIndices.includes(vi);
+                      const isZoneFirst = isZone && vi === sqVIndices[0];
+                      const isZoneLast = isZone && vi === sqVIndices[sqVIndices.length - 1];
                       const isMis = val > 0 && !isZone;
                       return (
                         <td
@@ -192,8 +194,8 @@ export function AlinhamentoView({ data, loading }: Props) {
                             ...(isZone
                               ? {
                                   backgroundColor: T.azul50,
-                                  borderLeft: `3px solid ${T.primary}`,
-                                  borderRight: `3px solid ${T.primary}`,
+                                  borderLeft: isZoneFirst ? `3px solid ${T.primary}` : `1px solid ${T.primary}22`,
+                                  borderRight: isZoneLast ? `3px solid ${T.primary}` : `1px solid ${T.primary}22`,
                                   borderTop: isFirst ? `3px solid ${T.primary}` : `1px solid ${T.primary}33`,
                                   borderBottom: isLast ? `3px solid ${T.primary}` : `1px solid ${T.primary}33`,
                                 }

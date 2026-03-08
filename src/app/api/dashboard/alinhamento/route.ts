@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { SQUADS, PV_COLS, V_COLS } from "@/lib/constants";
+import { SQUADS, PV_COLS, V_COLS, SQUAD_V_MAP } from "@/lib/constants";
 import type { AlinhamentoData } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -71,10 +71,11 @@ export async function GET() {
         total += val;
         if (val > 0 && p !== row.correctPV) mis += val;
       });
-      V_COLS.forEach((p) => {
+      const sqVIndices = SQUAD_V_MAP[row.sqId] || [];
+      V_COLS.forEach((p, idx) => {
         const val = row.cells.v[p] || 0;
         total += val;
-        if (val > 0 && p !== row.correctV) mis += val;
+        if (val > 0 && !sqVIndices.includes(idx)) mis += val;
       });
     });
 
