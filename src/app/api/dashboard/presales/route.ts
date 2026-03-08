@@ -141,9 +141,8 @@ export async function GET() {
       supabase.from("nekt_transbordo_mia").select("deal_id, webhook_received_at_br").in("deal_id", dealIds),
       supabase
         .from("nekt_pipedrive_activities")
-        .select("deal_id, add_time")
+        .select("deal_id, add_time, subject")
         .in("deal_id", dealIds)
-        .or("subject.ilike.*MIA*,subject.ilike.*Nutrição*,subject.ilike.*nutrição*,subject.ilike.*Tempo do Lead*")
         .order("add_time", { ascending: false }),
     ]);
     const addTimeMap = new Map((dealsExtra || []).map((d) => [d.id, d.add_time]));
@@ -153,10 +152,11 @@ export async function GET() {
       const prev = miaMap.get(m.deal_id);
       if (!prev || m.webhook_received_at_br > prev) miaMap.set(m.deal_id, m.webhook_received_at_br);
     }
-    // Última atividade MIA real por deal (já ordenado desc, pegar primeira ocorrência)
+    // Última atividade MIA real por deal (filtrar subject no JS)
+    const MIA_PATTERNS = [/mia/i, /nutrição/i, /tempo do lead/i];
     const lastMiaMap = new Map<number, string>();
     for (const m of miaActivityRows || []) {
-      if (m.deal_id && !lastMiaMap.has(m.deal_id)) {
+      if (m.deal_id && !lastMiaMap.has(m.deal_id) && MIA_PATTERNS.some((p) => p.test(m.subject || ""))) {
         lastMiaMap.set(m.deal_id, m.add_time);
       }
     }
