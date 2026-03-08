@@ -158,14 +158,22 @@ export interface OciosidadeData {
 }
 
 // Balanceamento — Regras MQL por Empreendimento
-export interface RegrasMqlEmp {
-  nome: string;
+export interface RegrasMqlFonte {
+  campaignName: string;
+  tipo: "lp" | "campanha";
+  labelCurto: string;
   intencoes: string[];
   faixas: string[];
   pagamentos: string[];
   aberturaIntencoes: number;
   aberturaFaixas: number;
   aberturaPagamentos: number;
+  aberturaGeral: number;
+}
+
+export interface RegrasMqlEmp {
+  nome: string;
+  fontes: RegrasMqlFonte[];
   aberturaGeral: number;
 }
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { T, SQUAD_COLORS, MQL_INTENCOES, MQL_FAIXAS, MQL_PAGAMENTOS } from "@/lib/constants";
-import type { RegrasMqlData, RegrasMqlEmp } from "@/lib/types";
+import type { RegrasMqlData, RegrasMqlEmp, RegrasMqlFonte } from "@/lib/types";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface Props {
@@ -121,11 +121,130 @@ function OptionDots({
   );
 }
 
-function EmpRow({ emp }: { emp: RegrasMqlEmp }) {
+function FonteTag({ fonte }: { fonte: RegrasMqlFonte }) {
+  if (fonte.tipo === "campanha") {
+    return (
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "4px",
+          fontSize: "11px",
+          fontWeight: 500,
+          color: T.verde700,
+          backgroundColor: T.verde50,
+          padding: "2px 8px",
+          borderRadius: "4px",
+          whiteSpace: "nowrap",
+        }}
+      >
+        <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: T.verde600 }} />
+        {fonte.labelCurto}
+      </span>
+    );
+  }
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "4px",
+        fontSize: "11px",
+        fontWeight: 500,
+        color: T.cinza700,
+        backgroundColor: T.cinza50,
+        padding: "2px 8px",
+        borderRadius: "4px",
+        whiteSpace: "nowrap",
+      }}
+    >
+      <span style={{ fontSize: "10px" }}>&#128196;</span>
+      {fonte.labelCurto}
+    </span>
+  );
+}
+
+function FonteDetailRow({ fonte }: { fonte: RegrasMqlFonte }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
     <>
+      <tr
+        onClick={() => setExpanded(!expanded)}
+        style={{ cursor: "pointer", transition: "background 0.1s" }}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = T.cinza50)}
+        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+      >
+        <td
+          style={{
+            padding: "6px 10px 6px 34px",
+            borderBottom: `1px solid ${T.border}`,
+            fontSize: "12px",
+            color: T.cinza700,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            {expanded ? <ChevronDown size={10} color={T.cinza400} /> : <ChevronRight size={10} color={T.cinza400} />}
+            <FonteTag fonte={fonte} />
+          </div>
+        </td>
+        <td style={{ padding: "6px 10px", borderBottom: `1px solid ${T.border}`, textAlign: "center" }}>
+          <MiniBar filled={fonte.intencoes.length} total={MQL_INTENCOES.length} pct={fonte.aberturaIntencoes} />
+        </td>
+        <td style={{ padding: "6px 10px", borderBottom: `1px solid ${T.border}`, textAlign: "center" }}>
+          <MiniBar filled={fonte.faixas.length} total={MQL_FAIXAS.length} pct={fonte.aberturaFaixas} />
+        </td>
+        <td style={{ padding: "6px 10px", borderBottom: `1px solid ${T.border}`, textAlign: "center" }}>
+          <MiniBar filled={fonte.pagamentos.length} total={MQL_PAGAMENTOS.length} pct={fonte.aberturaPagamentos} />
+        </td>
+        <td style={{ padding: "6px 10px", borderBottom: `1px solid ${T.border}` }}>
+          <AberturaBar pct={fonte.aberturaGeral} />
+        </td>
+      </tr>
+      {expanded && (
+        <tr>
+          <td
+            colSpan={5}
+            style={{
+              padding: "10px 16px 14px 50px",
+              borderBottom: `1px solid ${T.border}`,
+              backgroundColor: T.cinza50,
+            }}
+          >
+            <div style={{ display: "flex", gap: "32px", flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: "10px", fontWeight: 600, color: T.cinza600, textTransform: "uppercase", marginBottom: "6px" }}>
+                  Intenções
+                </div>
+                <OptionDots selected={fonte.intencoes} allOptions={MQL_INTENCOES} />
+              </div>
+              <div>
+                <div style={{ fontSize: "10px", fontWeight: 600, color: T.cinza600, textTransform: "uppercase", marginBottom: "6px" }}>
+                  Faixas de Investimento
+                </div>
+                <OptionDots selected={fonte.faixas} allOptions={MQL_FAIXAS} />
+              </div>
+              <div>
+                <div style={{ fontSize: "10px", fontWeight: 600, color: T.cinza600, textTransform: "uppercase", marginBottom: "6px" }}>
+                  Pagamentos
+                </div>
+                <OptionDots selected={fonte.pagamentos} allOptions={MQL_PAGAMENTOS} />
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function EmpRow({ emp }: { emp: RegrasMqlEmp }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasSingleFonte = emp.fontes.length === 1;
+
+  return (
+    <>
+      {/* Row agrupadora do empreendimento */}
       <tr
         onClick={() => setExpanded(!expanded)}
         style={{ cursor: "pointer", transition: "background 0.1s" }}
@@ -145,54 +264,75 @@ function EmpRow({ emp }: { emp: RegrasMqlEmp }) {
           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
             {expanded ? <ChevronDown size={12} color={T.cinza600} /> : <ChevronRight size={12} color={T.cinza600} />}
             {emp.nome}
+            <span style={{ fontSize: "10px", color: T.cinza400, marginLeft: "4px" }}>
+              {emp.fontes.length} fonte{emp.fontes.length !== 1 ? "s" : ""}
+            </span>
           </div>
         </td>
-        <td style={{ padding: "8px 10px", borderBottom: `1px solid ${T.border}`, textAlign: "center" }}>
-          <MiniBar filled={emp.intencoes.length} total={MQL_INTENCOES.length} pct={emp.aberturaIntencoes} />
-        </td>
-        <td style={{ padding: "8px 10px", borderBottom: `1px solid ${T.border}`, textAlign: "center" }}>
-          <MiniBar filled={emp.faixas.length} total={MQL_FAIXAS.length} pct={emp.aberturaFaixas} />
-        </td>
-        <td style={{ padding: "8px 10px", borderBottom: `1px solid ${T.border}`, textAlign: "center" }}>
-          <MiniBar filled={emp.pagamentos.length} total={MQL_PAGAMENTOS.length} pct={emp.aberturaPagamentos} />
-        </td>
+        {/* Se só tem 1 fonte, mostra mini-bars direto na row do empreendimento */}
+        {hasSingleFonte ? (
+          <>
+            <td style={{ padding: "8px 10px", borderBottom: `1px solid ${T.border}`, textAlign: "center" }}>
+              <MiniBar filled={emp.fontes[0].intencoes.length} total={MQL_INTENCOES.length} pct={emp.fontes[0].aberturaIntencoes} />
+            </td>
+            <td style={{ padding: "8px 10px", borderBottom: `1px solid ${T.border}`, textAlign: "center" }}>
+              <MiniBar filled={emp.fontes[0].faixas.length} total={MQL_FAIXAS.length} pct={emp.fontes[0].aberturaFaixas} />
+            </td>
+            <td style={{ padding: "8px 10px", borderBottom: `1px solid ${T.border}`, textAlign: "center" }}>
+              <MiniBar filled={emp.fontes[0].pagamentos.length} total={MQL_PAGAMENTOS.length} pct={emp.fontes[0].aberturaPagamentos} />
+            </td>
+          </>
+        ) : (
+          <>
+            <td style={{ padding: "8px 10px", borderBottom: `1px solid ${T.border}` }} />
+            <td style={{ padding: "8px 10px", borderBottom: `1px solid ${T.border}` }} />
+            <td style={{ padding: "8px 10px", borderBottom: `1px solid ${T.border}` }} />
+          </>
+        )}
         <td style={{ padding: "8px 10px", borderBottom: `1px solid ${T.border}` }}>
           <AberturaBar pct={emp.aberturaGeral} />
         </td>
       </tr>
-      {expanded && (
+      {/* Sub-rows de fontes (quando expandido) */}
+      {expanded && hasSingleFonte && (
         <tr>
           <td
             colSpan={5}
             style={{
-              padding: "12px 16px 16px 34px",
+              padding: "10px 16px 14px 34px",
               borderBottom: `1px solid ${T.border}`,
               backgroundColor: T.cinza50,
             }}
           >
+            <div style={{ marginBottom: "8px" }}>
+              <FonteTag fonte={emp.fontes[0]} />
+            </div>
             <div style={{ display: "flex", gap: "32px", flexWrap: "wrap" }}>
               <div>
                 <div style={{ fontSize: "10px", fontWeight: 600, color: T.cinza600, textTransform: "uppercase", marginBottom: "6px" }}>
                   Intenções
                 </div>
-                <OptionDots selected={emp.intencoes} allOptions={MQL_INTENCOES} />
+                <OptionDots selected={emp.fontes[0].intencoes} allOptions={MQL_INTENCOES} />
               </div>
               <div>
                 <div style={{ fontSize: "10px", fontWeight: 600, color: T.cinza600, textTransform: "uppercase", marginBottom: "6px" }}>
                   Faixas de Investimento
                 </div>
-                <OptionDots selected={emp.faixas} allOptions={MQL_FAIXAS} />
+                <OptionDots selected={emp.fontes[0].faixas} allOptions={MQL_FAIXAS} />
               </div>
               <div>
                 <div style={{ fontSize: "10px", fontWeight: 600, color: T.cinza600, textTransform: "uppercase", marginBottom: "6px" }}>
                   Pagamentos
                 </div>
-                <OptionDots selected={emp.pagamentos} allOptions={MQL_PAGAMENTOS} />
+                <OptionDots selected={emp.fontes[0].pagamentos} allOptions={MQL_PAGAMENTOS} />
               </div>
             </div>
           </td>
         </tr>
       )}
+      {expanded && !hasSingleFonte && emp.fontes.map((fonte) => (
+        <FonteDetailRow key={fonte.campaignName} fonte={fonte} />
+      ))}
     </>
   );
 }
@@ -285,7 +425,7 @@ export function BalanceamentoView({ data, loading }: Props) {
                         letterSpacing: "0.04em",
                       }}
                     >
-                      Empreendimento
+                      Empreendimento / Fonte
                     </th>
                     <th
                       style={{

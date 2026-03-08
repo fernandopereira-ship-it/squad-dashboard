@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { SQUADS, MQL_INTENCOES, MQL_FAIXAS, MQL_PAGAMENTOS, SQUAD_FROM_COMMERCIAL } from "@/lib/constants";
-import type { RegrasMqlData, RegrasMqlEmp, RegrasMqlSquad } from "@/lib/types";
+import type { RegrasMqlData, RegrasMqlFonte, RegrasMqlEmp, RegrasMqlSquad } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -12,31 +12,73 @@ const TOTAL_PAG = MQL_PAGAMENTOS.length;
 // Nomes a ignorar (não são empreendimentos reais)
 const IGNORE_NAMES = new Set(["LP WordPress", "Teste Empreendimento"]);
 
+function extractLabel(campaignName: string, tipo: "lp" | "campanha"): string {
+  if (tipo === "lp") return "LP WordPress";
+  // Extrair data do campaign_name: "... | DD/MM/YYYY" ou "..._DD/MM/YYYY"
+  const match = campaignName.match(/[|_]\s*(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (match) return `Campanha ${match[1]}/${match[2]}/${match[3]}`;
+  return "Campanha";
+}
+
 export async function GET() {
   try {
-    const { data: rows, error } = await supabase
+    // 1. Buscar Baserow
+    const { data: rows, error: errRows } = await supabase
       .from("squad_baserow_empreendimentos")
-      .select("nome, commercial_squad, mql_intencoes, mql_faixas, mql_pagamentos, status, id")
+      .select("nome, campaign_name, commercial_squad, mql_intencoes, mql_faixas, mql_pagamentos, status, id")
       .eq("status", true)
       .neq("nome", "")
       .order("id", { ascending: false });
 
-    if (error) throw new Error(`Supabase error: ${error.message}`);
+    if (errRows) throw new Error(`Supabase baserow error: ${errRows.message}`);
 
-    // Deduplica por nome — pega o com id mais alto (mais recente)
-    const uniqueMap = new Map<string, (typeof rows)[number]>();
-    for (const row of rows || []) {
-      if (IGNORE_NAMES.has(row.nome)) continue;
-      if (!uniqueMap.has(row.nome)) {
-        uniqueMap.set(row.nome, row);
+    // 2. Buscar campanhas ativas do Meta Ads (snapshot mais recente)
+    const { data: metaRows, error: errMeta } = await supabase
+      .from("squad_meta_ads")
+      .select("campaign_name, snapshot_date")
+      .order("snapshot_date", { ascending: false })
+      .limit(1);
+
+    let latestDate: string | null = null;
+    if (!errMeta && metaRows && metaRows.length > 0) {
+      latestDate = metaRows[0].snapshot_date;
+    }
+
+    const activeCampaigns = new Set<string>();
+    if (latestDate) {
+      const { data: activeRows } = await supabase
+        .from("squad_meta_ads")
+        .select("campaign_name")
+        .eq("snapshot_date", latestDate);
+      if (activeRows) {
+        for (const r of activeRows) {
+          activeCampaigns.add(r.campaign_name);
+        }
       }
     }
 
-    // Agrupar por squad
-    const squadEmps = new Map<number, RegrasMqlEmp[]>();
-    for (const [, row] of uniqueMap) {
+    // 3. Filtrar e agrupar por empreendimento
+    const empMap = new Map<string, { sqId: number; fontes: RegrasMqlFonte[] }>();
+
+    for (const row of rows || []) {
+      if (IGNORE_NAMES.has(row.nome)) continue;
       const sqId = SQUAD_FROM_COMMERCIAL[row.commercial_squad];
       if (!sqId) continue;
+
+      const cn = (row.campaign_name || "") as string;
+
+      // Determinar tipo e se deve incluir
+      let tipo: "lp" | "campanha";
+      if (cn.startsWith("LP ")) {
+        tipo = "lp";
+      } else if (cn.startsWith("[SI]")) {
+        tipo = "campanha";
+        // Só incluir se campanha está ativa no Meta Ads
+        if (!activeCampaigns.has(cn)) continue;
+      } else {
+        // Outros formatos — ignorar
+        continue;
+      }
 
       const intencoes = (row.mql_intencoes || []) as string[];
       const faixas = (row.mql_faixas || []) as string[];
@@ -47,8 +89,10 @@ export async function GET() {
       const aberturaPagamentos = Math.round((pagamentos.length / TOTAL_PAG) * 100);
       const aberturaGeral = Math.round(((intencoes.length / TOTAL_INT + faixas.length / TOTAL_FAIXAS + pagamentos.length / TOTAL_PAG) / 3) * 100);
 
-      const emp: RegrasMqlEmp = {
-        nome: row.nome,
+      const fonte: RegrasMqlFonte = {
+        campaignName: cn,
+        tipo,
+        labelCurto: extractLabel(cn, tipo),
         intencoes,
         faixas,
         pagamentos,
@@ -58,13 +102,37 @@ export async function GET() {
         aberturaGeral,
       };
 
+      if (!empMap.has(row.nome)) {
+        empMap.set(row.nome, { sqId, fontes: [] });
+      }
+      empMap.get(row.nome)!.fontes.push(fonte);
+    }
+
+    // 4. Montar empreendimentos e agrupar por squad
+    const squadEmps = new Map<number, RegrasMqlEmp[]>();
+
+    for (const [nome, { sqId, fontes }] of empMap) {
+      // Ordenar: campanhas primeiro (mais recentes = id maior já vem primeiro), depois LPs
+      fontes.sort((a, b) => {
+        if (a.tipo !== b.tipo) return a.tipo === "campanha" ? -1 : 1;
+        return 0;
+      });
+
+      const aberturaGeral = fontes.length > 0
+        ? Math.round(fontes.reduce((s, f) => s + f.aberturaGeral, 0) / fontes.length)
+        : 0;
+
+      const emp: RegrasMqlEmp = { nome, fontes, aberturaGeral };
+
       if (!squadEmps.has(sqId)) squadEmps.set(sqId, []);
       squadEmps.get(sqId)!.push(emp);
     }
 
     const squads: RegrasMqlSquad[] = SQUADS.map((sq) => {
       const emps = squadEmps.get(sq.id) || [];
-      const aberturaMedia = emps.length > 0 ? Math.round(emps.reduce((s, e) => s + e.aberturaGeral, 0) / emps.length) : 0;
+      const aberturaMedia = emps.length > 0
+        ? Math.round(emps.reduce((s, e) => s + e.aberturaGeral, 0) / emps.length)
+        : 0;
       return {
         id: sq.id,
         name: sq.name,
