@@ -16,7 +16,7 @@ import {
 import type { TabKey, AcompanhamentoData, AlinhamentoData, MetasData, DateColumn, SquadData } from "./types";
 import { generateDates } from "./dates";
 
-const API_TOKEN = process.env.PIPEDRIVE_API_TOKEN!;
+const API_TOKEN = (process.env.PIPEDRIVE_API_TOKEN || "").trim();
 const BASE = `https://${PIPEDRIVE_DOMAIN}/api/v1`;
 
 // --- Pipedrive API helpers ---
