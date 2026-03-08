@@ -170,10 +170,16 @@ export function OciosidadeView({ data, loading }: Props) {
                     backgroundColor: d.isToday ? T.azul50 : T.cinza50,
                     borderLeft: d.isToday ? `2px solid ${T.azul600}` : undefined,
                     borderRight: d.isToday ? `2px solid ${T.azul600}` : undefined,
+                    borderTop: d.isToday ? `2px solid ${T.azul600}` : undefined,
                   }}
                 >
-                  <div style={{ fontSize: "10px", fontWeight: 500 }}>{d.weekday}</div>
-                  <div style={{ fontSize: "10px", fontWeight: 400, color: T.cinza400 }}>{d.label}</div>
+                  {d.isToday && (
+                    <div style={{ fontSize: "9px", fontWeight: 700, color: T.azul600, letterSpacing: "0.08em", marginBottom: "2px" }}>
+                      HOJE
+                    </div>
+                  )}
+                  <div style={{ fontSize: "10px", fontWeight: d.isToday ? 600 : 500, color: d.isToday ? T.azul600 : undefined }}>{d.weekday}</div>
+                  <div style={{ fontSize: "10px", fontWeight: 400, color: d.isToday ? T.azul600 : T.cinza400 }}>{d.label}</div>
                 </th>
               ))}
             </tr>
@@ -243,7 +249,7 @@ export function OciosidadeView({ data, loading }: Props) {
                             opacity: dateInfo?.isPast ? 0.85 : 1,
                           }}
                         >
-                          {day.occupancyPct > 0 ? `${day.occupancyPct}` : "-"}
+                          {day.occupancyPct > 0 ? `${day.occupancyPct}%` : "-"}
                         </div>
                       </td>
                     );
