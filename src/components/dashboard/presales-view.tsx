@@ -97,7 +97,7 @@ export function PresalesView({ data, loading }: Props) {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ backgroundColor: "#f8f8fa" }}>
-              <th style={{ ...thStyle, textAlign: "left", minWidth: 180 }}>Transbordo MIA</th>
+              <th style={{ ...thStyle, textAlign: "left", minWidth: 180 }}>Tempo de Resposta Após Transbordo</th>
               <th style={{ ...thStyle, textAlign: "center", minWidth: 80 }}>Tempo de Resposta</th>
               <th style={{ ...thStyle, textAlign: "center", minWidth: 60 }}>≤30min</th>
               <th style={{ ...thStyle, textAlign: "center", minWidth: 50 }}>Total</th>
