@@ -19,7 +19,8 @@ function pct(v: number): string {
 
 const META_ADS_ACCOUNT = "205286032338340";
 function metaAdLink(adId: string): string {
-  return `https://www.facebook.com/adsmanager/manage/ads?act=${META_ADS_ACCOUNT}&selected_ad_ids=${adId}`;
+  const filtering = encodeURIComponent(JSON.stringify([{ field: "id", operator: "IN", value: [adId] }]));
+  return `https://www.facebook.com/adsmanager/manage/ads?act=${META_ADS_ACCOUNT}&filtering=${filtering}&selected_ad_ids=${adId}`;
 }
 
 const SEV_ORDER: Record<string, number> = { CRITICO: 0, ALERTA: 1, OK: 2 };
@@ -222,8 +223,12 @@ export function DiagnosticoMktView({ data, loading }: Props) {
               const sev = SEV_COLORS[ad.severidade] || SEV_COLORS.OK;
               const diagnosticos = ad.diagnostico ? ad.diagnostico.split(" | ") : [];
               return (
-                <div
+                <a
                   key={ad.ad_id}
+                  href={metaAdLink(ad.ad_id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Abrir no Meta Ads Manager"
                   style={{
                     backgroundColor: sev.cardBg,
                     borderRadius: "10px",
@@ -235,7 +240,12 @@ export function DiagnosticoMktView({ data, loading }: Props) {
                     flexDirection: "column",
                     gap: "6px",
                     overflow: "hidden",
+                    textDecoration: "none",
+                    transition: "transform 0.15s, box-shadow 0.15s",
+                    cursor: "pointer",
                   }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.12)"; }}
                 >
                   {/* Header */}
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -292,7 +302,7 @@ export function DiagnosticoMktView({ data, loading }: Props) {
                       ))}
                     </div>
                   )}
-                </div>
+                </a>
               );
             })}
           </div>
@@ -388,8 +398,9 @@ export function DiagnosticoMktView({ data, loading }: Props) {
                       </span>
                     </td>
                     <td style={{ ...tdStyle, fontSize: "12px" }}>{ad.empreendimento}</td>
-                    <td style={{ ...tdStyle, fontSize: "12px", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis" }} title={ad.ad_name}>
-                      {ad.ad_name}
+                    <td style={{ ...tdStyle, fontSize: "12px", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis" }} title={`${ad.ad_name}\nID: ${ad.ad_id}`}>
+                      <div>{ad.ad_name}</div>
+                      <div style={{ fontSize: "10px", color: T.cinza400, fontFamily: "monospace", marginTop: "1px" }}>ID: {ad.ad_id}</div>
                     </td>
                     <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px" }}>{formatBRL(ad.spend)}</td>
                     <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px" }}>{pct(ad.ctr)}</td>
