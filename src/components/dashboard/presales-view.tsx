@@ -30,6 +30,19 @@ function statusBg(minutes: number | null): string {
   return "#fee2e2";
 }
 
+// Degradê amarelo (#facc15) → vermelho (#dc2626) proporcional ao tempo (0–1080min = 18h)
+function gradientColor(minutes: number | null): { bg: string; fg: string } {
+  if (minutes == null) return { bg: "#f3f4f6", fg: "#9ca3af" };
+  const t = Math.min(Math.max(minutes / 1080, 0), 1);
+  const r = Math.round(250 + (220 - 250) * t);
+  const g = Math.round(204 + (38 - 204) * t);
+  const b = Math.round(21 + (38 - 21) * t);
+  const bgR = Math.round(255 + (254 - 255) * t);
+  const bgG = Math.round(251 + (226 - 251) * t);
+  const bgB = Math.round(235 + (226 - 235) * t);
+  return { bg: `rgb(${bgR},${bgG},${bgB})`, fg: `rgb(${r},${g},${b})` };
+}
+
 function statusLabel(minutes: number | null): string {
   if (minutes == null) return "Pendente";
   if (minutes <= 30) return "Rápido";
@@ -121,19 +134,24 @@ export function PresalesView({ data, loading }: Props) {
                     </span>
                   </td>
                   <td style={{ ...tdStyle, textAlign: "center" }}>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        padding: "2px 10px",
-                        borderRadius: "10px",
-                        fontSize: "12px",
-                        fontWeight: 700,
-                        backgroundColor: statusBg(ps.medianMinutes),
-                        color: statusColor(ps.medianMinutes),
-                      }}
-                    >
-                      {formatMinutes(ps.medianMinutes)}
-                    </span>
+                    {(() => {
+                      const gc = gradientColor(ps.medianMinutes);
+                      return (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "2px 10px",
+                            borderRadius: "10px",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            backgroundColor: gc.bg,
+                            color: gc.fg,
+                          }}
+                        >
+                          {formatMinutes(ps.medianMinutes)}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td style={{ ...tdStyle, textAlign: "center", fontWeight: 600, color: barColor }}>{ps.pctSub30}%</td>
                   <td style={{ ...tdStyle, textAlign: "center" }}>{ps.totalDeals}</td>
