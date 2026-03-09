@@ -85,11 +85,10 @@ export function CampanhasView({ data, loading }: Props) {
                 backgroundColor: clr,
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
               }}
             >
               <span style={{ color: "#FFF", fontWeight: 600, fontSize: "14px" }}>{sq.name}</span>
-              <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: "12px", alignItems: "center", marginLeft: "auto" }}>
                 <span style={{ color: "rgba(255,255,255,0.8)", fontSize: "12px" }}>
                   Gasto: {formatBRL(sq.totalSpendMonth)}
                   {sq.spendAlert && (
@@ -109,11 +108,28 @@ export function CampanhasView({ data, loading }: Props) {
             </div>
 
             {hasData ? (
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "20%" }} />  {/* Nome */}
+                  <col style={{ width: "8%" }} />   {/* Gasto */}
+                  <col style={{ width: "6%" }} />   {/* Impr */}
+                  <col style={{ width: "6%" }} />   {/* Clicks */}
+                  <col style={{ width: "6%" }} />   {/* Leads */}
+                  <col style={{ width: "6%" }} />   {/* MQL */}
+                  <col style={{ width: "6%" }} />   {/* SQL */}
+                  <col style={{ width: "6%" }} />   {/* OPP */}
+                  <col style={{ width: "6%" }} />   {/* WON */}
+                  <col style={{ width: "5%" }} />   {/* CPC */}
+                  <col style={{ width: "5%" }} />   {/* CPL */}
+                  <col style={{ width: "5%" }} />   {/* CMQL */}
+                  <col style={{ width: "5%" }} />   {/* CSQL */}
+                  <col style={{ width: "5%" }} />   {/* COPP */}
+                  <col style={{ width: "5%" }} />   {/* CPW */}
+                </colgroup>
                 <thead>
                   {/* Linha 1: grupos */}
                   <tr style={{ backgroundColor: "#EAEBEF" }}>
-                    <th rowSpan={2} style={{ ...thStyle, textAlign: "left", minWidth: 180, backgroundColor: "#EAEBEF", borderRight: "1px solid #D9DAE0" }}>Nome</th>
+                    <th rowSpan={2} style={{ ...thStyle, textAlign: "left", backgroundColor: "#EAEBEF", borderRight: "1px solid #D9DAE0" }}>Nome</th>
                     <th rowSpan={2} style={{ ...thStyle, textAlign: "right", backgroundColor: "#EAEBEF", borderRight: "1px solid #D9DAE0" }}>Gasto</th>
                     <th colSpan={7} style={{ ...thStyle, textAlign: "center", backgroundColor: "#EEF0F7", borderBottom: "none", borderRight: "1px solid #D9DAE0", fontSize: "9px", letterSpacing: "0.06em" }}>Volume (funil)</th>
                     <th colSpan={6} style={{ ...thStyle, textAlign: "center", backgroundColor: "#F5EDE8", borderBottom: "none", fontSize: "9px", letterSpacing: "0.06em" }}>Custo por Etapa</th>

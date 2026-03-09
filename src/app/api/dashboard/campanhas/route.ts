@@ -31,20 +31,38 @@ export async function GET(req: NextRequest) {
     const monthPrefix = snapshotDate!.substring(0, 7);
     const startDate = `${monthPrefix}-01`;
 
-    // Queries paralelas: Meta Ads + Funil por ad (lifetime)
-    const [metaRes, funnelRes] = await Promise.all([
+    // Queries paralelas: Meta Ads + Funil por ad (lifetime) + Contagens diárias (funil empreendimento)
+    const [metaRes, funnelRes, countsRes] = await Promise.all([
       supabase
         .from("squad_meta_ads")
         .select("*")
         .eq("snapshot_date", snapshotDate)
         .order("spend", { ascending: false }),
       supabase.rpc("get_ad_funnel_counts", { start_date: startDate }),
+      supabase
+        .from("squad_daily_counts")
+        .select("tab, empreendimento, count"),
     ]);
 
     if (metaRes.error) throw new Error(`Supabase error: ${metaRes.error.message}`);
     if (funnelRes.error) console.warn(`Funnel query error (non-fatal): ${funnelRes.error.message}`);
+    if (countsRes.error) console.warn(`Counts query error (non-fatal): ${countsRes.error.message}`);
 
     const ads = metaRes.data || [];
+
+    // Map<empreendimento, {mql, sql, opp, won}> do squad_daily_counts (sem filtro de data — soma tudo)
+    const countsMap = new Map<string, { mql: number; sql: number; opp: number; won: number }>();
+    for (const row of countsRes.data || []) {
+      const emp = row.empreendimento;
+      const tab = row.tab?.toLowerCase();
+      if (!countsMap.has(emp)) countsMap.set(emp, { mql: 0, sql: 0, opp: 0, won: 0 });
+      const entry = countsMap.get(emp)!;
+      const c = Number(row.count) || 0;
+      if (tab === "mql") entry.mql += c;
+      else if (tab === "sql") entry.sql += c;
+      else if (tab === "opp") entry.opp += c;
+      else if (tab === "won") entry.won += c;
+    }
 
     // Map<ad_id, {mql, sql, opp, won}> do funil rastreado (lifetime)
     const adFunnel = new Map<string, { mql: number; sql: number; opp: number; won: number }>();
@@ -86,17 +104,9 @@ export async function GET(req: NextRequest) {
         const clicks = empAds.reduce((s, r) => s + (r.clicks || 0), 0);
         const leads = empAds.reduce((s, r) => s + (r.leads || 0), 0);
 
-        // Funil: agregar MQL/SQL/OPP/WON dos ads deste empreendimento (lifetime via adFunnel)
-        let empMql = 0, empSql = 0, empOpp = 0, empWon = 0;
-        for (const ad of empAds) {
-          const funnel = adFunnel.get(ad.ad_id);
-          if (funnel) {
-            empMql += funnel.mql;
-            empSql += funnel.sql;
-            empOpp += funnel.opp;
-            empWon += funnel.won;
-          }
-        }
+        // Funil empreendimento: usar squad_daily_counts (mais completo que adFunnel)
+        const counts = countsMap.get(emp) || { mql: 0, sql: 0, opp: 0, won: 0 };
+        const empMql = counts.mql, empSql = counts.sql, empOpp = counts.opp, empWon = counts.won;
 
         // Ads detail com funil por ad
         const adsDetail: MetaAdRow[] = empAds
