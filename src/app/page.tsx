@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { T } from "@/lib/constants";
 import type { TabKey, AcompanhamentoData, AlinhamentoData, CampanhasData, RegrasMqlData, OciosidadeData, PresalesData } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
 import { Header } from "@/components/dashboard/header";
 import { AcompanhamentoView } from "@/components/dashboard/acompanhamento-view";
 import { AlinhamentoView } from "@/components/dashboard/alinhamento-view";
@@ -13,6 +15,8 @@ import { OciosidadeView } from "@/components/dashboard/ociosidade-view";
 import { PresalesView } from "@/components/dashboard/presales-view";
 
 export default function Dashboard() {
+  const router = useRouter();
+  const [user, setUser] = useState<{ email: string; name: string } | undefined>();
   const [mainView, setMainView] = useState("campanhas");
   const [activeTab, setActiveTab] = useState<TabKey>("mql");
   const [loading, setLoading] = useState(false);
@@ -22,6 +26,24 @@ export default function Dashboard() {
   const [balancData, setBalancData] = useState<RegrasMqlData | null>(null);
   const [ocioData, setOcioData] = useState<OciosidadeData | null>(null);
   const [presalesData, setPresalesData] = useState<PresalesData | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user: u } }) => {
+      if (u) {
+        setUser({
+          email: u.email || "",
+          name: u.user_metadata?.full_name || u.user_metadata?.name || u.email || "",
+        });
+      }
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
 
   const fetchAcomp = useCallback(async (tab: TabKey) => {
     setLoading(true);
@@ -133,7 +155,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ fontFamily: T.font, backgroundColor: T.cinza50, minHeight: "100vh", letterSpacing: "0.02em" }}>
-      <Header mainView={mainView} setMainView={setMainView} onRefresh={handleRefresh} loading={loading} />
+      <Header mainView={mainView} setMainView={setMainView} onRefresh={handleRefresh} loading={loading} user={user} onLogout={handleLogout} />
       <div style={{ padding: "16px 20px", maxWidth: "2200px", margin: "0 auto" }}>
         {mainView === "acompanhamento" && (
           <AcompanhamentoView

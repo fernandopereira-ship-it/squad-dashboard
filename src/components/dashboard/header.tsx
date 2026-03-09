@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, RefreshCw, BarChart3, Users, Clock, Scale, Megaphone, Timer, ShoppingCart, Activity } from "lucide-react";
+import { Calendar, RefreshCw, BarChart3, Users, Clock, Scale, Megaphone, Timer, ShoppingCart, Activity, LogOut } from "lucide-react";
 import { T } from "@/lib/constants";
 import { pillBtnStyle, pillBtnPrimaryStyle, viewBtnStyle } from "./ui";
 
@@ -18,9 +18,11 @@ interface HeaderProps {
   setMainView: (v: string) => void;
   onRefresh: () => void;
   loading: boolean;
+  user?: { email: string; name: string };
+  onLogout?: () => void;
 }
 
-export function Header({ mainView, setMainView, onRefresh, loading }: HeaderProps) {
+export function Header({ mainView, setMainView, onRefresh, loading, user, onLogout }: HeaderProps) {
   return (
     <header
       style={{
@@ -137,6 +139,31 @@ export function Header({ mainView, setMainView, onRefresh, loading }: HeaderProp
       <button onClick={onRefresh} disabled={loading} style={pillBtnPrimaryStyle()}>
         <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> {loading ? "Carregando..." : "Atualizar"}
       </button>
+      {user && (
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginLeft: "4px" }}>
+          <span style={{ fontSize: "12px", color: T.mutedFg, maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {user.name || user.email}
+          </span>
+          <button
+            onClick={onLogout}
+            title="Sair"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "6px 10px",
+              borderRadius: "9999px",
+              border: `1px solid ${T.border}`,
+              backgroundColor: "transparent",
+              color: T.mutedFg,
+              fontSize: "12px",
+              cursor: "pointer",
+            }}
+          >
+            <LogOut size={12} /> Sair
+          </button>
+        </div>
+      )}
     </header>
   );
 }
