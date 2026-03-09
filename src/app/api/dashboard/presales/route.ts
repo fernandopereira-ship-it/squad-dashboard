@@ -123,15 +123,9 @@ function findSquadId(name: string): number | null {
 
 export async function GET() {
   try {
-    // Filtrar deals dos últimos 3 dias (ex: segunda mostra desde sexta)
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 3);
-    const cutoffISO = cutoff.toISOString();
-
     const { data: rows, error } = await supabase
       .from("squad_presales_response")
       .select("deal_id, deal_title, preseller_name, transbordo_at, first_action_at, response_time_minutes, action_type")
-      .gte("transbordo_at", cutoffISO)
       .order("transbordo_at", { ascending: false });
 
     if (error) throw new Error(`Supabase error: ${error.message}`);
@@ -220,12 +214,16 @@ export async function GET() {
       return b.totalDeals - a.totalDeals;
     });
 
-    // Deals: pendentes (mais antigos primeiro), depois com ligação (mais antigos primeiro)
-    const sorted = [...dealsWithBizTime].sort((a, b) => {
-      if (a.is_pending && !b.is_pending) return -1;
-      if (!a.is_pending && b.is_pending) return 1;
-      return new Date(a.transbordo_at).getTime() - new Date(b.transbordo_at).getTime();
-    });
+    // Deals recentes: filtrar últimos 3 dias, pendentes primeiro
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 3);
+    const sorted = [...dealsWithBizTime]
+      .filter((d) => new Date(d.transbordo_at) >= cutoff)
+      .sort((a, b) => {
+        if (a.is_pending && !b.is_pending) return -1;
+        if (!a.is_pending && b.is_pending) return 1;
+        return new Date(a.transbordo_at).getTime() - new Date(b.transbordo_at).getTime();
+      });
 
     const recentDeals: PresalesDealRow[] = sorted.slice(0, 50).map((d) => ({
       deal_id: d.deal_id,
