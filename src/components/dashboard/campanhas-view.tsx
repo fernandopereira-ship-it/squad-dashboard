@@ -40,18 +40,24 @@ export function CampanhasView({ data, loading }: Props) {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const lifetimeCpl = summary.totalLeads > 0 ? summary.totalSpend / summary.totalLeads : 0;
+  const lifetimeCpw = summary.cpw;
+
   return (
     <>
       {/* Summary cards */}
       <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
-        <BrlPill label="Investimento" value={summary.totalSpend} />
-        <StatPill label="Leads" value={summary.totalLeads} color={T.verde600} />
-        <BrlPill label="CPL" value={summary.avgCpl} />
+        <BrlPillWithTip label="Investimento" value={summary.totalSpendMonth} tip="Dados do mês atual" />
+        <StatPillWithTip label="Leads" value={summary.totalLeads} color={T.verde600} tip="Dados do mês atual" />
         <StatPill label="MQL" value={summary.totalMql} />
         <StatPill label="WON" value={summary.totalWon} color={T.verde600} />
-        <BrlPill label="CPW" value={summary.cpw} />
+        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+          <BrlPill label="CPL" value={lifetimeCpl} />
+          <span style={{ color: T.cinza300, fontSize: "16px", fontWeight: 300 }}>|</span>
+          <BrlPill label="CPW" value={lifetimeCpw} />
+        </div>
         <span style={{ fontSize: "11px", color: T.cinza400, marginLeft: "auto" }}>
-          {monthLabel(snapshotDate)} · {summary.totalAds} ads · atualizado {new Date(snapshotDate + "T12:00:00").toLocaleDateString("pt-BR")}
+          Lifetime · gasto mês {monthLabel(snapshotDate)} · {summary.totalAds} ads
         </span>
       </div>
 
@@ -85,10 +91,13 @@ export function CampanhasView({ data, loading }: Props) {
               <span style={{ color: "#FFF", fontWeight: 600, fontSize: "14px" }}>{sq.name}</span>
               <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
                 <span style={{ color: "rgba(255,255,255,0.8)", fontSize: "12px" }}>
-                  Gasto: {formatBRL(sq.totalSpend)}
+                  Gasto: {formatBRL(sq.totalSpendMonth)}
+                  {sq.spendAlert && (
+                    <span style={{ marginLeft: "4px", fontSize: "10px" }} title="Gasto desbalanceado entre squads (>5% do target)">🔴</span>
+                  )}
                 </span>
                 <span style={{ color: "rgba(255,255,255,0.8)", fontSize: "12px" }}>
-                  Leads: {sq.totalLeads}
+                  Leads: {sq.totalLeadsMonth}
                 </span>
                 <span style={{ color: "rgba(255,255,255,0.8)", fontSize: "12px" }}>
                   WON: {sq.totalWon}
@@ -191,7 +200,7 @@ export function CampanhasView({ data, loading }: Props) {
 
       <div style={{ marginTop: "10px", textAlign: "right" }}>
         <span style={{ fontSize: "11px", color: T.cinza400 }}>
-          Meta Ads · Conta SZI · {monthLabel(snapshotDate)}
+          Meta Ads · Conta SZI · Lifetime (desde jun/2024)
         </span>
       </div>
     </>
@@ -296,6 +305,142 @@ function ThInfo({ label, tip, bg }: { label: string; tip: string; bg?: string })
         </div>
       )}
     </th>
+  );
+}
+
+function BrlPillWithTip({ label, value, tip }: { label: string; value: number; tip: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div
+      style={{
+        backgroundColor: "#FFF",
+        border: "1px solid #E6E7EA",
+        borderRadius: "12px",
+        padding: "10px 18px",
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+        position: "relative",
+      }}
+    >
+      <span style={{ fontSize: "10px", fontWeight: 500, color: "#6B6E84", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+        {label}
+      </span>
+      <span style={{ fontSize: "20px", fontWeight: 700, color: T.fg, fontVariantNumeric: "tabular-nums" }}>
+        {formatBRL(value)}
+      </span>
+      <span
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        style={{
+          display: "inline-block",
+          width: "14px",
+          height: "14px",
+          borderRadius: "50%",
+          backgroundColor: "#D1D3DB",
+          color: "#FFF",
+          fontSize: "9px",
+          fontWeight: 700,
+          lineHeight: "14px",
+          textAlign: "center",
+          cursor: "help",
+        }}
+      >
+        i
+      </span>
+      {show && (
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "100%",
+            transform: "translateX(-50%)",
+            marginTop: "4px",
+            backgroundColor: "#1F2937",
+            color: "#FFF",
+            fontSize: "11px",
+            fontWeight: 400,
+            padding: "6px 10px",
+            borderRadius: "6px",
+            whiteSpace: "nowrap",
+            zIndex: 20,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+            pointerEvents: "none",
+          }}
+        >
+          {tip}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatPillWithTip({ label, value, color, tip }: { label: string; value: number; color?: string; tip: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div
+      style={{
+        backgroundColor: "#FFF",
+        border: "1px solid #E6E7EA",
+        borderRadius: "12px",
+        padding: "10px 18px",
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+        position: "relative",
+      }}
+    >
+      <span style={{ fontSize: "10px", fontWeight: 500, color: "#6B6E84", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+        {label}
+      </span>
+      <span style={{ fontSize: "20px", fontWeight: 700, color: color || T.fg, fontVariantNumeric: "tabular-nums" }}>
+        {value.toLocaleString("pt-BR")}
+      </span>
+      <span
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        style={{
+          display: "inline-block",
+          width: "14px",
+          height: "14px",
+          borderRadius: "50%",
+          backgroundColor: "#D1D3DB",
+          color: "#FFF",
+          fontSize: "9px",
+          fontWeight: 700,
+          lineHeight: "14px",
+          textAlign: "center",
+          cursor: "help",
+        }}
+      >
+        i
+      </span>
+      {show && (
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "100%",
+            transform: "translateX(-50%)",
+            marginTop: "4px",
+            backgroundColor: "#1F2937",
+            color: "#FFF",
+            fontSize: "11px",
+            fontWeight: 400,
+            padding: "6px 10px",
+            borderRadius: "6px",
+            whiteSpace: "nowrap",
+            zIndex: 20,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+            pointerEvents: "none",
+          }}
+        >
+          {tip}
+        </div>
+      )}
+    </div>
   );
 }
 

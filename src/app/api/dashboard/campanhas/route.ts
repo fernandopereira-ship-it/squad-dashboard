@@ -11,7 +11,6 @@ export async function GET(req: NextRequest) {
     let snapshotDate = dateParam;
 
     if (!snapshotDate) {
-      // Buscar a data mais recente disponível
       const { data: latest } = await supabase
         .from("squad_meta_ads")
         .select("snapshot_date")
@@ -21,7 +20,7 @@ export async function GET(req: NextRequest) {
       if (!latest || latest.length === 0) {
         return NextResponse.json({
           snapshotDate: new Date().toISOString().split("T")[0],
-          summary: { totalAds: 0, totalSpend: 0, totalLeads: 0, avgCpl: 0, criticos: 0, alertas: 0, totalMql: 0, totalSql: 0, totalOpp: 0, totalWon: 0, cpw: 0 },
+          summary: { totalAds: 0, totalSpend: 0, totalLeads: 0, avgCpl: 0, criticos: 0, alertas: 0, totalMql: 0, totalSql: 0, totalOpp: 0, totalWon: 0, cpw: 0, totalSpendMonth: 0 },
           squads: [],
           top10: [],
         } satisfies CampanhasData);
@@ -29,31 +28,25 @@ export async function GET(req: NextRequest) {
       snapshotDate = latest[0].snapshot_date;
     }
 
-    // Determinar startDate do mês para daily_counts
-    const monthPrefix = snapshotDate!.substring(0, 7); // YYYY-MM
+    const monthPrefix = snapshotDate!.substring(0, 7);
     const startDate = `${monthPrefix}-01`;
 
-    // Queries paralelas: Meta Ads + Pipedrive daily_counts + Funil por ad
-    const [metaRes, countsRes, funnelRes] = await Promise.all([
+    // Queries paralelas: Meta Ads + Funil por ad (lifetime)
+    const [metaRes, funnelRes] = await Promise.all([
       supabase
         .from("squad_meta_ads")
         .select("*")
         .eq("snapshot_date", snapshotDate)
         .order("spend", { ascending: false }),
-      supabase
-        .from("squad_daily_counts")
-        .select("tab, empreendimento, count")
-        .gte("date", startDate),
       supabase.rpc("get_ad_funnel_counts", { start_date: startDate }),
     ]);
 
     if (metaRes.error) throw new Error(`Supabase error: ${metaRes.error.message}`);
-    if (countsRes.error) throw new Error(`Daily counts error: ${countsRes.error.message}`);
     if (funnelRes.error) console.warn(`Funnel query error (non-fatal): ${funnelRes.error.message}`);
 
     const ads = metaRes.data || [];
 
-    // Map<ad_id, {mql, sql, opp, won}> do funil rastreado
+    // Map<ad_id, {mql, sql, opp, won}> do funil rastreado (lifetime)
     const adFunnel = new Map<string, { mql: number; sql: number; opp: number; won: number }>();
     for (const row of funnelRes.data || []) {
       adFunnel.set(row.ad_id, {
@@ -64,22 +57,17 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Agregar Pipedrive counts por empreendimento
-    const countsMap = new Map<string, Record<string, number>>();
-    for (const row of countsRes.data || []) {
-      const key = row.empreendimento;
-      if (!countsMap.has(key)) countsMap.set(key, { mql: 0, sql: 0, opp: 0, won: 0 });
-      const cur = countsMap.get(key)!;
-      cur[row.tab] = (cur[row.tab] || 0) + (row.count || 0);
-    }
-
-    // Summary
+    // Summary global
     const totalAds = ads.length;
     const totalSpend = ads.reduce((s, r) => s + Number(r.spend), 0);
     const totalLeads = ads.reduce((s, r) => s + (r.leads || 0), 0);
     const avgCpl = totalLeads > 0 ? totalSpend / totalLeads : 0;
     const criticos = ads.filter((r) => r.severidade === "CRITICO").length;
     const alertas = ads.filter((r) => r.severidade === "ALERTA").length;
+
+    // Totais mensais (das novas colunas)
+    const totalSpendMonth = ads.reduce((s, r) => s + Number(r.spend_month || 0), 0);
+    const totalLeadsMonth = ads.reduce((s, r) => s + (r.leads_month || 0), 0);
 
     // Per squad
     const squads: CampanhasSquadSummary[] = SQUADS.map((sq) => {
@@ -97,9 +85,20 @@ export async function GET(req: NextRequest) {
         const impressions = empAds.reduce((s, r) => s + (r.impressions || 0), 0);
         const clicks = empAds.reduce((s, r) => s + (r.clicks || 0), 0);
         const leads = empAds.reduce((s, r) => s + (r.leads || 0), 0);
-        const counts = countsMap.get(emp) || { mql: 0, sql: 0, opp: 0, won: 0 };
 
-        // Ordenação dos ads: CPL asc (se leads>0), senão CPC asc (se clicks>0), senão spend desc
+        // Funil: agregar MQL/SQL/OPP/WON dos ads deste empreendimento (lifetime via adFunnel)
+        let empMql = 0, empSql = 0, empOpp = 0, empWon = 0;
+        for (const ad of empAds) {
+          const funnel = adFunnel.get(ad.ad_id);
+          if (funnel) {
+            empMql += funnel.mql;
+            empSql += funnel.sql;
+            empOpp += funnel.opp;
+            empWon += funnel.won;
+          }
+        }
+
+        // Ads detail com funil por ad
         const adsDetail: MetaAdRow[] = empAds
           .map((r) => {
             const funnel = adFunnel.get(r.ad_id) || { mql: 0, sql: 0, opp: 0, won: 0 };
@@ -133,20 +132,14 @@ export async function GET(req: NextRequest) {
             };
           })
           .sort((a, b) => {
-            // Ads sem gasto vão pro final
             if (a.spend === 0 && b.spend > 0) return 1;
             if (b.spend === 0 && a.spend > 0) return -1;
-            // CPL asc se ambos têm leads
             if (a.leads > 0 && b.leads > 0) return a.cpl - b.cpl;
-            // Quem tem leads vem antes
             if (a.leads > 0 && b.leads === 0) return -1;
             if (b.leads > 0 && a.leads === 0) return 1;
-            // CPC asc se ambos têm clicks
             if (a.clicks > 0 && b.clicks > 0) return a.cpc - b.cpc;
-            // Quem tem clicks vem antes
             if (a.clicks > 0 && b.clicks === 0) return -1;
             if (b.clicks > 0 && a.clicks === 0) return 1;
-            // Spend desc
             return b.spend - a.spend;
           });
 
@@ -159,16 +152,16 @@ export async function GET(req: NextRequest) {
           leads,
           cpl: leads > 0 ? Math.round((spend / leads) * 100) / 100 : 0,
           cpc: clicks > 0 ? Math.round((spend / clicks) * 100) / 100 : 0,
-          cmql: counts.mql > 0 ? Math.round((spend / counts.mql) * 100) / 100 : 0,
-          csql: counts.sql > 0 ? Math.round((spend / counts.sql) * 100) / 100 : 0,
-          copp: counts.opp > 0 ? Math.round((spend / counts.opp) * 100) / 100 : 0,
+          cmql: empMql > 0 ? Math.round((spend / empMql) * 100) / 100 : 0,
+          csql: empSql > 0 ? Math.round((spend / empSql) * 100) / 100 : 0,
+          copp: empOpp > 0 ? Math.round((spend / empOpp) * 100) / 100 : 0,
           criticos: empAds.filter((r) => r.severidade === "CRITICO").length,
           alertas: empAds.filter((r) => r.severidade === "ALERTA").length,
-          mql: counts.mql,
-          sql: counts.sql,
-          opp: counts.opp,
-          won: counts.won,
-          cpw: counts.won > 0 ? Math.round((spend / counts.won) * 100) / 100 : 0,
+          mql: empMql,
+          sql: empSql,
+          opp: empOpp,
+          won: empWon,
+          cpw: empWon > 0 ? Math.round((spend / empWon) * 100) / 100 : 0,
           adsDetail,
         };
       });
@@ -179,6 +172,8 @@ export async function GET(req: NextRequest) {
       const sqSql = empreendimentos.reduce((s, e) => s + e.sql, 0);
       const sqOpp = empreendimentos.reduce((s, e) => s + e.opp, 0);
       const sqWon = empreendimentos.reduce((s, e) => s + e.won, 0);
+      const sqSpendMonth = sqAds.reduce((s, r) => s + Number(r.spend_month || 0), 0);
+      const sqLeadsMonth = sqAds.reduce((s, r) => s + (r.leads_month || 0), 0);
 
       return {
         id: sq.id,
@@ -194,10 +189,22 @@ export async function GET(req: NextRequest) {
         totalOpp: sqOpp,
         totalWon: sqWon,
         cpw: sqWon > 0 ? Math.round((sqSpend / sqWon) * 100) / 100 : 0,
+        totalSpendMonth: Math.round(sqSpendMonth * 100) / 100,
+        totalLeadsMonth: sqLeadsMonth,
+        spendAlert: false, // calculado abaixo
       };
     });
 
-    // Top 10 problemas (CRITICO primeiro, depois ALERTA, por gasto desc)
+    // Alerta de gasto por squad: se gasto >5% ou <5% do target (total/3)
+    const targetPerSquad = totalSpendMonth / 3;
+    if (targetPerSquad > 0) {
+      for (const sq of squads) {
+        const deviation = Math.abs(sq.totalSpendMonth - targetPerSquad) / targetPerSquad;
+        sq.spendAlert = deviation > 0.05;
+      }
+    }
+
+    // Top 10 problemas
     const problemAds = ads
       .filter((r) => r.severidade !== "OK")
       .sort((a, b) => {
@@ -248,8 +255,8 @@ export async function GET(req: NextRequest) {
       summary: {
         totalAds,
         totalSpend: Math.round(totalSpend * 100) / 100,
-        totalLeads,
-        avgCpl: Math.round(avgCpl * 100) / 100,
+        totalLeads: totalLeadsMonth,
+        avgCpl: totalLeadsMonth > 0 ? Math.round((totalSpendMonth / totalLeadsMonth) * 100) / 100 : 0,
         criticos,
         alertas,
         totalMql: grandMql,
@@ -257,6 +264,7 @@ export async function GET(req: NextRequest) {
         totalOpp: squads.reduce((s, sq) => s + sq.totalOpp, 0),
         totalWon: grandWon,
         cpw: grandWon > 0 ? Math.round((totalSpend / grandWon) * 100) / 100 : 0,
+        totalSpendMonth: Math.round(totalSpendMonth * 100) / 100,
       },
       squads,
       top10,

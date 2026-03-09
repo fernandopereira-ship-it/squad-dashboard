@@ -130,6 +130,9 @@ export interface CampanhasSquadSummary {
   totalOpp: number;
   totalWon: number;
   cpw: number;
+  totalSpendMonth: number;
+  totalLeadsMonth: number;
+  spendAlert: boolean;
 }
 
 export interface CampanhasSummary {
@@ -144,6 +147,7 @@ export interface CampanhasSummary {
   totalOpp: number;
   totalWon: number;
   cpw: number;
+  totalSpendMonth: number;
 }
 
 export interface CampanhasData {
