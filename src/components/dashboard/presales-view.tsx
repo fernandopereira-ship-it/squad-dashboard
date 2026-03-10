@@ -202,7 +202,12 @@ export function PresalesView({ data, loading }: Props) {
                   </td>
                   <td style={{ ...tdStyle, textAlign: "center", fontWeight: 600, color: barColor }}>{ps.pctSub30}%</td>
                   <td style={{ ...tdStyle, textAlign: "center" }}>{ps.totalDeals}</td>
-                  <td style={{ ...tdStyle, textAlign: "center", color: "#16a34a", fontWeight: 600 }}>{ps.dealsComAcao}</td>
+                  <td style={{ ...tdStyle, textAlign: "center", color: "#16a34a", fontWeight: 600 }}>
+                    {ps.dealsComAcao}
+                    <span style={{ fontSize: "11px", fontWeight: 400, color: T.cinza400, marginLeft: "4px" }}>
+                      ({ps.totalDeals > 0 ? Math.round((ps.dealsComAcao / ps.totalDeals) * 100) : 0}%)
+                    </span>
+                  </td>
                   <td style={{ ...tdStyle, textAlign: "center", color: pendColor, fontWeight: 600 }}>{ps.dealsPendentes}</td>
                 </tr>
               );
@@ -258,6 +263,7 @@ export function PresalesView({ data, loading }: Props) {
               <DealSortTh label="Criação Deal" col="deal_add_time" align="left" minW={120} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
               <DealSortTh label="Transbordo" col="transbordo_at" align="left" minW={120} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
               <DealSortTh label="Última MIA" col="last_mia_at" align="left" minW={120} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              <DealSortTh label="Tempo Resp." col="status" align="center" minW={100} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
               <DealSortTh label="Status" col="status" align="center" minW={80} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
             </tr>
           </thead>
@@ -290,6 +296,26 @@ export function PresalesView({ data, loading }: Props) {
                   <td style={{ ...tdStyle, fontSize: "12px", color: T.cinza700 }}>{formatDate(d.transbordo_at)}</td>
                   <td style={{ ...tdStyle, fontSize: "12px", color: T.cinza700 }}>
                     {d.last_mia_at ? formatDate(d.last_mia_at) : "—"}
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: "center" }}>
+                    {(() => {
+                      const gc = gradientColor(mins);
+                      return (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "2px 10px",
+                            borderRadius: "10px",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            backgroundColor: isPending ? "#f3f4f6" : gc.bg,
+                            color: isPending ? T.cinza400 : gc.fg,
+                          }}
+                        >
+                          {mins != null ? formatMinutes(mins) : "—"}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td style={{ ...tdStyle, textAlign: "center" }}>
                     <span
