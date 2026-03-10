@@ -71,14 +71,12 @@ async function pipedriveGet<T>(path: string, token: string, params: Record<strin
 }
 
 async function fetchDealsForUser(userId: number, token: string, sinceDate: string): Promise<PipedriveDeal[]> {
-  // Pipedrive v1: GET /deals with filter by user_id and pipeline
-  // We use the deals search with user filter
   const deals = await pipedriveGet<PipedriveDeal>("/deals", token, {
     user_id: String(userId),
+    status: "open",
     sort: "add_time DESC",
   });
 
-  // Filter in memory: pipeline 28, add_time >= sinceDate
   return deals.filter((d) =>
     d.pipeline_id === PIPELINE_ID &&
     d.add_time >= sinceDate
