@@ -147,7 +147,6 @@ export default function Dashboard() {
   const getSyncFunctions = (view: string): string[] => {
     if (view === "campanhas" || view === "diagnostico-mkt") return ["meta-ads"];
     if (view === "ociosidade") return ["calendar"];
-    if (view === "presales") return ["presales"];
     return ["dashboard"];
   };
 
