@@ -23,9 +23,12 @@ export async function GET() {
       ownerCounts.get(row.empreendimento)!.set(row.owner_name, row.count);
     }
 
-    // Match owner names (case-insensitive partial match)
+    // Match owner names (case-insensitive, accent-insensitive partial match)
+    function normalize(s: string): string {
+      return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    }
     function matchOwner(colName: string, ownerName: string): boolean {
-      return ownerName.toLowerCase().includes(colName.toLowerCase());
+      return normalize(ownerName).includes(normalize(colName));
     }
 
     // Build flat rows
