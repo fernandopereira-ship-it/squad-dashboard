@@ -85,17 +85,17 @@ export async function GET(req: NextRequest) {
       crossWonMap.set(row.ad_id, Number(row.won_other) || 0);
     }
 
-    // Summary global
+    // Summary global — usar dados do mês
     const totalAds = ads.length;
-    const totalSpend = ads.reduce((s, r) => s + Number(r.spend), 0);
-    const totalLeads = ads.reduce((s, r) => s + (r.leads || 0), 0);
+    const totalSpend = ads.reduce((s, r) => s + Number(r.spend_month || 0), 0);
+    const totalLeads = ads.reduce((s, r) => s + (r.leads_month || 0), 0);
     const avgCpl = totalLeads > 0 ? totalSpend / totalLeads : 0;
     const criticos = ads.filter((r) => r.severidade === "CRITICO").length;
     const alertas = ads.filter((r) => r.severidade === "ALERTA").length;
 
-    // Totais mensais (das novas colunas)
-    const totalSpendMonth = ads.reduce((s, r) => s + Number(r.spend_month || 0), 0);
-    const totalLeadsMonth = ads.reduce((s, r) => s + (r.leads_month || 0), 0);
+    // Totais mensais (mantidos para compatibilidade)
+    const totalSpendMonth = totalSpend;
+    const totalLeadsMonth = totalLeads;
 
     // Per squad
     const squads: CampanhasSquadSummary[] = SQUADS.map((sq) => {
@@ -109,20 +109,21 @@ export async function GET(req: NextRequest) {
 
       const empreendimentos: CampanhasEmpSummary[] = sq.empreendimentos.map((emp) => {
         const empAds = empMap.get(emp) || [];
-        const spend = empAds.reduce((s, r) => s + Number(r.spend), 0);
+        const spend = empAds.reduce((s, r) => s + Number(r.spend_month || 0), 0);
         const impressions = empAds.reduce((s, r) => s + (r.impressions || 0), 0);
         const clicks = empAds.reduce((s, r) => s + (r.clicks || 0), 0);
-        const leads = empAds.reduce((s, r) => s + (r.leads || 0), 0);
+        const leads = empAds.reduce((s, r) => s + (r.leads_month || 0), 0);
 
-        // Funil empreendimento: lifetime (para tabela)
-        const counts = countsMapAll.get(emp) || { mql: 0, sql: 0, opp: 0, won: 0 };
+        // Funil empreendimento: dados do mês
+        const counts = countsMapMonth.get(emp) || { mql: 0, sql: 0, opp: 0, won: 0 };
         const empMql = counts.mql, empSql = counts.sql, empOpp = counts.opp, empWon = counts.won;
 
         // Ads detail com funil por ad
         const adsDetail: MetaAdRow[] = empAds
           .map((r) => {
             const funnel = adFunnel.get(r.ad_id) || { mql: 0, sql: 0, opp: 0, won: 0 };
-            const sp = Number(r.spend);
+            const sp = Number(r.spend_month || 0);
+            const ld = r.leads_month || 0;
             return {
               ad_id: r.ad_id,
               campaign_name: r.campaign_name || "",
@@ -133,8 +134,8 @@ export async function GET(req: NextRequest) {
               impressions: r.impressions || 0,
               clicks: r.clicks || 0,
               spend: sp,
-              leads: r.leads || 0,
-              cpl: Number(r.cpl),
+              leads: ld,
+              cpl: ld > 0 ? Math.round((sp / ld) * 100) / 100 : 0,
               ctr: Number(r.ctr),
               cpm: Number(r.cpm),
               frequency: Number(r.frequency),
@@ -188,10 +189,10 @@ export async function GET(req: NextRequest) {
         };
       });
 
-      const sqSpend = sqAds.reduce((s, r) => s + Number(r.spend), 0);
-      const sqLeads = sqAds.reduce((s, r) => s + (r.leads || 0), 0);
-      const sqSpendMonth = sqAds.reduce((s, r) => s + Number(r.spend_month || 0), 0);
-      const sqLeadsMonth = sqAds.reduce((s, r) => s + (r.leads_month || 0), 0);
+      const sqSpend = sqAds.reduce((s, r) => s + Number(r.spend_month || 0), 0);
+      const sqLeads = sqAds.reduce((s, r) => s + (r.leads_month || 0), 0);
+      const sqSpendMonth = sqSpend;
+      const sqLeadsMonth = sqLeads;
 
       // Totais MÊS (para header colorido: MQL, WON exibidos)
       let sqMqlMonth = 0, sqSqlMonth = 0, sqOppMonth = 0, sqWonMonth = 0;
@@ -202,9 +203,6 @@ export async function GET(req: NextRequest) {
         sqOppMonth += mc.opp;
         sqWonMonth += mc.won;
       }
-
-      // WON lifetime (para CPW no header)
-      const sqWonLifetime = empreendimentos.reduce((s, e) => s + e.won, 0);
 
       return {
         id: sq.id,
@@ -219,7 +217,7 @@ export async function GET(req: NextRequest) {
         totalSql: sqSqlMonth,
         totalOpp: sqOppMonth,
         totalWon: sqWonMonth,
-        cpw: sqWonLifetime > 0 ? Math.round((sqSpend / sqWonLifetime) * 100) / 100 : 0,
+        cpw: sqWonMonth > 0 ? Math.round((sqSpend / sqWonMonth) * 100) / 100 : 0,
         totalSpendMonth: Math.round(sqSpendMonth * 100) / 100,
         totalLeadsMonth: sqLeadsMonth,
         spendAlert: false, // calculado abaixo
@@ -248,7 +246,8 @@ export async function GET(req: NextRequest) {
 
     const top10: MetaAdRow[] = problemAds.map((r) => {
       const funnel = adFunnel.get(r.ad_id) || { mql: 0, sql: 0, opp: 0, won: 0 };
-      const sp = Number(r.spend);
+      const sp = Number(r.spend_month || 0);
+      const ld = r.leads_month || 0;
       return {
         ad_id: r.ad_id,
         campaign_name: r.campaign_name || "",
@@ -259,8 +258,8 @@ export async function GET(req: NextRequest) {
         impressions: r.impressions || 0,
         clicks: r.clicks || 0,
         spend: sp,
-        leads: r.leads || 0,
-        cpl: Number(r.cpl),
+        leads: ld,
+        cpl: ld > 0 ? Math.round((sp / ld) * 100) / 100 : 0,
         ctr: Number(r.ctr),
         cpm: Number(r.cpm),
         frequency: Number(r.frequency),
@@ -283,24 +282,20 @@ export async function GET(req: NextRequest) {
     const grandMqlMonth = squads.reduce((s, sq) => s + sq.totalMql, 0);
     const grandWonMonth = squads.reduce((s, sq) => s + sq.totalWon, 0);
 
-    // WON lifetime (para CPW)
-    let grandWonLifetime = 0;
-    for (const [, v] of countsMapAll) grandWonLifetime += v.won;
-
     const result: CampanhasData = {
       snapshotDate: snapshotDate!,
       summary: {
         totalAds,
         totalSpend: Math.round(totalSpend * 100) / 100,
-        totalLeads: totalLeads, // lifetime (para CPL)
-        avgCpl: totalLeads > 0 ? Math.round((totalSpend / totalLeads) * 100) / 100 : 0,
+        totalLeads,
+        avgCpl: Math.round(avgCpl * 100) / 100,
         criticos,
         alertas,
         totalMql: grandMqlMonth,
         totalSql: squads.reduce((s, sq) => s + sq.totalSql, 0),
         totalOpp: squads.reduce((s, sq) => s + sq.totalOpp, 0),
         totalWon: grandWonMonth,
-        cpw: grandWonLifetime > 0 ? Math.round((totalSpend / grandWonLifetime) * 100) / 100 : 0,
+        cpw: grandWonMonth > 0 ? Math.round((totalSpend / grandWonMonth) * 100) / 100 : 0,
         totalSpendMonth: Math.round(totalSpendMonth * 100) / 100,
         totalLeadsMonth,
       },

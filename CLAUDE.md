@@ -173,6 +173,22 @@ Total: 5 closers. Metas WON divididas por closer e distribuidas proporcionalment
 - NUNCA usar `deal.value` (R$ monetario) como meta — sempre ler da nekt_meta26_metas
 - Dividir por closers (nao por squads) e distribuir proporcionalmente
 
+## View Resultados (Funil Comercial)
+- **Funil:** Leads > MQL > SQL > OPP > Reserva > Contrato > WON + Investimento
+- **Leads** = leads Meta Ads (`leads_month`) + MQLs de outros canais (`max(MQL - leads_meta, 0)`)
+- **MQL/SQL/OPP/WON** = `squad_daily_counts` filtrado pelo mes (open + won + lost)
+- **Reserva/Contrato** = snapshots de deals nos stages 191/192 (sem filtro de data, sempre o ultimo)
+- **Investimento** = `spend_month` do Meta Ads (somente gasto do mes corrente)
+- **Sync:** usa `["dashboard", "meta-ads"]` (precisa de ambos)
+
+## Meta Ads — Armadilhas Conhecidas
+- `squad_meta_ads` armazena snapshots diarios **acumulados** (lifetime), NAO deltas diarios
+- Campos `spend` e `leads` sao lifetime; campos `spend_month` e `leads_month` sao do mes corrente
+- SEMPRE usar `spend_month`/`leads_month` para exibir dados do mes (funil, campanhas)
+- Para exibir dados mensais, pegar o **snapshot mais recente** (`eq snapshot_date`) — NUNCA somar snapshots
+- `impressions`, `clicks`, `ctr`, `cpm`, `frequency` ainda sao lifetime (Edge Function nao salva versao mensal)
+- Edge Function faz 2 chamadas: `fetchAllInsights(lifetime)` + `fetchAllInsights(month)` em paralelo
+
 ## Pipedrive API — Armadilhas Conhecidas
 - `/deals` endpoint **IGNORA** `pipeline_id` param silenciosamente — retorna TODOS os pipelines
 - `/deals` endpoint **IGNORA** `stage_id` param tambem — retorna TODOS os stages. Deduplicar por `deal.id` obrigatorio

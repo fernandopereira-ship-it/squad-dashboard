@@ -240,6 +240,8 @@ export interface FunilEmpreendimento {
   sql: number;
   opp: number;
   won: number;
+  reserva: number;
+  contrato: number;
   spend: number;
   // Custos
   cpl: number;   // spend / leads
@@ -252,7 +254,10 @@ export interface FunilEmpreendimento {
   leadToMql: number;    // mql / leads
   mqlToSql: number;     // sql / mql
   sqlToOpp: number;     // opp / sql
-  oppToWon: number;     // won / opp
+  oppToReserva: number;      // reserva / opp
+  reservaToContrato: number; // contrato / reserva
+  contratoToWon: number;     // won / contrato
+  oppToWon: number;          // won / opp (legacy/overall)
 }
 
 export interface FunilSquad {

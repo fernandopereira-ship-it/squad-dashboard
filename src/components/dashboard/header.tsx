@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, RefreshCw, BarChart3, Users, Clock, Scale, Megaphone, Timer, ShoppingCart, Activity, LogOut } from "lucide-react";
+import { Calendar, RefreshCw, BarChart3, Users, Clock, Scale, Megaphone, Timer, ShoppingCart, Activity, LogOut, TrendingUp } from "lucide-react";
 import { T } from "@/lib/constants";
 import { pillBtnStyle, pillBtnPrimaryStyle, viewBtnStyle } from "./ui";
 
@@ -54,6 +54,16 @@ export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated,
           border: `1px solid ${T.border}`,
         }}
       >
+        <button
+          onClick={() => setMainView("resultados")}
+          style={{
+            ...viewBtnStyle,
+            backgroundColor: mainView === "resultados" ? T.fg : "transparent",
+            color: mainView === "resultados" ? "#FFF" : T.cinza600,
+          }}
+        >
+          <TrendingUp size={12} /> Resultados
+        </button>
         <button
           onClick={() => setMainView("campanhas")}
           style={{

@@ -22,6 +22,8 @@ function buildFunil(
   sql: number,
   opp: number,
   won: number,
+  reserva: number,
+  contrato: number,
   spend: number,
 ): FunilEmpreendimento {
   return {
@@ -33,6 +35,8 @@ function buildFunil(
     sql,
     opp,
     won,
+    reserva,
+    contrato,
     spend: Math.round(spend * 100) / 100,
     cpl: cost(spend, leads),
     cmql: cost(spend, mql),
@@ -43,6 +47,9 @@ function buildFunil(
     leadToMql: rate(mql, leads),
     mqlToSql: rate(sql, mql),
     sqlToOpp: rate(opp, sql),
+    oppToReserva: rate(reserva, opp),
+    reservaToContrato: rate(contrato, reserva),
+    contratoToWon: rate(won, contrato),
     oppToWon: rate(won, opp),
   };
 }
@@ -55,8 +62,10 @@ function sumFunil(rows: FunilEmpreendimento[], label: string): FunilEmpreendimen
   const sql = rows.reduce((s, r) => s + r.sql, 0);
   const opp = rows.reduce((s, r) => s + r.opp, 0);
   const won = rows.reduce((s, r) => s + r.won, 0);
+  const reserva = rows.reduce((s, r) => s + r.reserva, 0);
+  const contrato = rows.reduce((s, r) => s + r.contrato, 0);
   const spend = rows.reduce((s, r) => s + r.spend, 0);
-  return buildFunil(label, impressions, clicks, leads, mql, sql, opp, won, spend);
+  return buildFunil(label, impressions, clicks, leads, mql, sql, opp, won, reserva, contrato, spend);
 }
 
 export async function GET(req: NextRequest) {
@@ -66,30 +75,47 @@ export async function GET(req: NextRequest) {
     const month = monthParam || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const startDate = `${month}-01`;
 
-    // Queries paralelas
-    const [metaRes, countsRes] = await Promise.all([
+    // Buscar o snapshot mais recente do Meta Ads
+    const { data: latestSnap } = await supabase
+      .from("squad_meta_ads")
+      .select("snapshot_date")
+      .gte("snapshot_date", startDate)
+      .order("snapshot_date", { ascending: false })
+      .limit(1)
+      .single();
+    const latestDate = latestSnap?.snapshot_date || startDate;
+
+    // Queries paralelas — usar spend_month/leads_month (dados do mês, não lifetime)
+    const [metaRes, countsRes, stageRes] = await Promise.all([
       supabase
         .from("squad_meta_ads")
-        .select("empreendimento, impressions, clicks, leads, spend")
-        .gte("snapshot_date", startDate),
+        .select("empreendimento, impressions, clicks, leads_month, spend_month")
+        .eq("snapshot_date", latestDate),
       supabase
         .from("squad_daily_counts")
         .select("tab, empreendimento, count")
+        .in("tab", ["mql", "sql", "opp", "won"])
         .gte("date", startDate),
+      // Reserva/Contrato são snapshots (sem filtro de data — sempre pega o último)
+      supabase
+        .from("squad_daily_counts")
+        .select("tab, empreendimento, count")
+        .in("tab", ["reserva", "contrato"]),
     ]);
 
     if (metaRes.error) throw new Error(`Meta Ads query error: ${metaRes.error.message}`);
     if (countsRes.error) throw new Error(`Daily counts query error: ${countsRes.error.message}`);
+    if (stageRes.error) throw new Error(`Stage counts query error: ${stageRes.error.message}`);
 
-    // Agregar Meta Ads por empreendimento
+    // Agregar Meta Ads por empreendimento (usando dados do mês)
     const metaMap = new Map<string, { impressions: number; clicks: number; leads: number; spend: number }>();
     for (const row of metaRes.data || []) {
       const key = row.empreendimento;
       const cur = metaMap.get(key) || { impressions: 0, clicks: 0, leads: 0, spend: 0 };
       cur.impressions += row.impressions || 0;
       cur.clicks += row.clicks || 0;
-      cur.leads += row.leads || 0;
-      cur.spend += Number(row.spend) || 0;
+      cur.leads += row.leads_month || 0;
+      cur.spend += Number(row.spend_month) || 0;
       metaMap.set(key, cur);
     }
 
@@ -97,7 +123,15 @@ export async function GET(req: NextRequest) {
     const countsMap = new Map<string, Record<string, number>>();
     for (const row of countsRes.data || []) {
       const key = row.empreendimento;
-      if (!countsMap.has(key)) countsMap.set(key, { mql: 0, sql: 0, opp: 0, won: 0 });
+      if (!countsMap.has(key)) countsMap.set(key, { mql: 0, sql: 0, opp: 0, won: 0, reserva: 0, contrato: 0 });
+      const cur = countsMap.get(key)!;
+      cur[row.tab] = (cur[row.tab] || 0) + (row.count || 0);
+    }
+
+    // Agregar stage counts (reserva/contrato snapshot)
+    for (const row of stageRes.data || []) {
+      const key = row.empreendimento;
+      if (!countsMap.has(key)) countsMap.set(key, { mql: 0, sql: 0, opp: 0, won: 0, reserva: 0, contrato: 0 });
       const cur = countsMap.get(key)!;
       cur[row.tab] = (cur[row.tab] || 0) + (row.count || 0);
     }
@@ -106,16 +140,21 @@ export async function GET(req: NextRequest) {
     const squads: FunilSquad[] = SQUADS.map((sq) => {
       const empRows: FunilEmpreendimento[] = sq.empreendimentos.map((emp) => {
         const meta = metaMap.get(emp) || { impressions: 0, clicks: 0, leads: 0, spend: 0 };
-        const counts = countsMap.get(emp) || { mql: 0, sql: 0, opp: 0, won: 0 };
+        const counts = countsMap.get(emp) || { mql: 0, sql: 0, opp: 0, won: 0, reserva: 0, contrato: 0 };
+        // Leads = leads Meta Ads + MQLs que não vieram do Meta (outros canais)
+        const mqiNaoPago = Math.max(counts.mql - meta.leads, 0);
+        const leads = meta.leads + mqiNaoPago;
         return buildFunil(
           emp,
           meta.impressions,
           meta.clicks,
-          meta.leads,
+          leads,
           counts.mql,
           counts.sql,
           counts.opp,
           counts.won,
+          counts.reserva || 0,
+          counts.contrato || 0,
           meta.spend,
         );
       });
