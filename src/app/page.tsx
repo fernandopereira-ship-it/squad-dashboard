@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { T } from "@/lib/constants";
 import type { TabKey, AcompanhamentoData, AlinhamentoData, CampanhasData, RegrasMqlData, OciosidadeData, PresalesData, FunilData } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
-import { Header } from "@/components/dashboard/header";
+import { Header, type MediaFilter } from "@/components/dashboard/header";
 import { AcompanhamentoView } from "@/components/dashboard/acompanhamento-view";
 import { AlinhamentoView } from "@/components/dashboard/alinhamento-view";
 import { BalanceamentoView } from "@/components/dashboard/balanceamento-view";
@@ -29,6 +29,7 @@ export default function Dashboard() {
   const [ocioData, setOcioData] = useState<OciosidadeData | null>(null);
   const [presalesData, setPresalesData] = useState<PresalesData | null>(null);
   const [funilData, setFunilData] = useState<FunilData | null>(null);
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [syncWarning, setSyncWarning] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,10 +77,11 @@ export default function Dashboard() {
     }
   }, []);
 
-  const fetchCamp = useCallback(async () => {
+  const fetchCamp = useCallback(async (filter: MediaFilter = "all") => {
     setLoading(true);
     try {
-      const res = await fetch("/api/dashboard/campanhas");
+      const params = filter === "paid" ? "?filter=paid" : "";
+      const res = await fetch(`/api/dashboard/campanhas${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setCampData(await res.json());
     } catch (err) {
@@ -128,10 +130,11 @@ export default function Dashboard() {
     }
   }, []);
 
-  const fetchFunil = useCallback(async () => {
+  const fetchFunil = useCallback(async (filter: MediaFilter = "all") => {
     setLoading(true);
     try {
-      const res = await fetch("/api/dashboard/funil");
+      const params = filter === "paid" ? "?filter=paid" : "";
+      const res = await fetch(`/api/dashboard/funil${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setFunilData(await res.json());
     } catch (err) {
@@ -140,6 +143,15 @@ export default function Dashboard() {
       setLoading(false);
     }
   }, []);
+
+  // Re-fetch when mediaFilter changes for relevant views
+  useEffect(() => {
+    if (mainView === "resultados") {
+      fetchFunil(mediaFilter);
+    } else if (mainView === "campanhas") {
+      fetchCamp(mediaFilter);
+    }
+  }, [mediaFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (mainView === "acompanhamento" && !acompData[activeTab]) {
@@ -152,13 +164,13 @@ export default function Dashboard() {
       if (!balancData) fetchBalanc();
       if (!ocioData) fetchOcio();
     } else if (mainView === "campanhas" && !campData) {
-      fetchCamp();
+      fetchCamp(mediaFilter);
     } else if (mainView === "diagnostico-mkt" && !campData) {
       fetchCamp();
     } else if (mainView === "presales" && !presalesData) {
       fetchPresales();
     } else if (mainView === "resultados" && !funilData) {
-      fetchFunil();
+      fetchFunil(mediaFilter);
     }
   }, [activeTab, mainView]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -192,10 +204,10 @@ export default function Dashboard() {
       else if (mainView === "alinhamento") await fetchAlinh();
       else if (mainView === "ociosidade") await fetchOcio();
       else if (mainView === "balanceamento") await fetchBalanc();
-      else if (mainView === "campanhas") await fetchCamp();
+      else if (mainView === "campanhas") await fetchCamp(mediaFilter);
       else if (mainView === "diagnostico-mkt") await fetchCamp();
       else if (mainView === "presales") await fetchPresales();
-      else if (mainView === "resultados") await fetchFunil();
+      else if (mainView === "resultados") await fetchFunil(mediaFilter);
       setLastUpdated(new Date());
     } catch (err) {
       console.error("Refresh error:", err);
@@ -207,7 +219,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ fontFamily: T.font, backgroundColor: T.cinza50, minHeight: "100vh", letterSpacing: "0.02em" }}>
-      <Header mainView={mainView} setMainView={setMainView} onRefresh={handleRefresh} loading={loading} lastUpdated={lastUpdated} user={user} onLogout={handleLogout} />
+      <Header mainView={mainView} setMainView={setMainView} onRefresh={handleRefresh} loading={loading} lastUpdated={lastUpdated} user={user} onLogout={handleLogout} mediaFilter={mediaFilter} setMediaFilter={setMediaFilter} />
       {syncWarning && (
         <div
           style={{

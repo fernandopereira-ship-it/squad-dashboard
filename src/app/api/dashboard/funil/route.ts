@@ -71,6 +71,8 @@ function sumFunil(rows: FunilEmpreendimento[], label: string): FunilEmpreendimen
 export async function GET(req: NextRequest) {
   try {
     const monthParam = req.nextUrl.searchParams.get("month");
+    const filterParam = req.nextUrl.searchParams.get("filter"); // "paid" or null
+    const paidOnly = filterParam === "paid";
     const now = new Date();
     const month = monthParam || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const startDate = `${month}-01`;
@@ -141,20 +143,42 @@ export async function GET(req: NextRequest) {
       const empRows: FunilEmpreendimento[] = sq.empreendimentos.map((emp) => {
         const meta = metaMap.get(emp) || { impressions: 0, clicks: 0, leads: 0, spend: 0 };
         const counts = countsMap.get(emp) || { mql: 0, sql: 0, opp: 0, won: 0, reserva: 0, contrato: 0 };
-        // Leads = leads Meta Ads + MQLs que não vieram do Meta (outros canais)
-        const mqiNaoPago = Math.max(counts.mql - meta.leads, 0);
-        const leads = meta.leads + mqiNaoPago;
+
+        let leads: number, mql: number, sql: number, opp: number, won: number, reserva: number, contrato: number;
+
+        if (paidOnly) {
+          // Mídia paga: MQL limitado ao número de leads Meta Ads, downstream proporcional
+          leads = meta.leads;
+          mql = Math.min(counts.mql, meta.leads);
+          const ratio = counts.mql > 0 ? mql / counts.mql : 0;
+          sql = Math.round(counts.sql * ratio);
+          opp = Math.round(counts.opp * ratio);
+          won = Math.round(counts.won * ratio);
+          reserva = Math.round((counts.reserva || 0) * ratio);
+          contrato = Math.round((counts.contrato || 0) * ratio);
+        } else {
+          // Todos: leads Meta Ads + MQLs de outros canais
+          const mqiNaoPago = Math.max(counts.mql - meta.leads, 0);
+          leads = meta.leads + mqiNaoPago;
+          mql = counts.mql;
+          sql = counts.sql;
+          opp = counts.opp;
+          won = counts.won;
+          reserva = counts.reserva || 0;
+          contrato = counts.contrato || 0;
+        }
+
         return buildFunil(
           emp,
           meta.impressions,
           meta.clicks,
           leads,
-          counts.mql,
-          counts.sql,
-          counts.opp,
-          counts.won,
-          counts.reserva || 0,
-          counts.contrato || 0,
+          mql,
+          sql,
+          opp,
+          won,
+          reserva,
+          contrato,
           meta.spend,
         );
       });

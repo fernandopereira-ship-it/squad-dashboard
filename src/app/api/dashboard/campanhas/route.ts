@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     const dateParam = req.nextUrl.searchParams.get("date");
+    const filterParam = req.nextUrl.searchParams.get("filter"); // "paid" or null
+    const paidOnly = filterParam === "paid";
     let snapshotDate = dateParam;
 
     if (!snapshotDate) {
@@ -114,9 +116,16 @@ export async function GET(req: NextRequest) {
         const clicks = empAds.reduce((s, r) => s + (r.clicks || 0), 0);
         const leads = empAds.reduce((s, r) => s + (r.leads_month || 0), 0);
 
-        // Funil empreendimento: dados do mês
+        // Funil empreendimento: dados do mês (com filtro paid se aplicável)
         const counts = countsMapMonth.get(emp) || { mql: 0, sql: 0, opp: 0, won: 0 };
-        const empMql = counts.mql, empSql = counts.sql, empOpp = counts.opp, empWon = counts.won;
+        let empMql = counts.mql, empSql = counts.sql, empOpp = counts.opp, empWon = counts.won;
+        if (paidOnly) {
+          empMql = Math.min(counts.mql, leads);
+          const ratio = counts.mql > 0 ? empMql / counts.mql : 0;
+          empSql = Math.round(counts.sql * ratio);
+          empOpp = Math.round(counts.opp * ratio);
+          empWon = Math.round(counts.won * ratio);
+        }
 
         // Ads detail com funil por ad
         const adsDetail: MetaAdRow[] = empAds
@@ -194,14 +203,13 @@ export async function GET(req: NextRequest) {
       const sqSpendMonth = sqSpend;
       const sqLeadsMonth = sqLeads;
 
-      // Totais MÊS (para header colorido: MQL, WON exibidos)
+      // Totais MÊS — usar os valores já filtrados dos empreendimentos
       let sqMqlMonth = 0, sqSqlMonth = 0, sqOppMonth = 0, sqWonMonth = 0;
-      for (const empName of sq.empreendimentos) {
-        const mc = countsMapMonth.get(empName) || { mql: 0, sql: 0, opp: 0, won: 0 };
-        sqMqlMonth += mc.mql;
-        sqSqlMonth += mc.sql;
-        sqOppMonth += mc.opp;
-        sqWonMonth += mc.won;
+      for (const e of empreendimentos) {
+        sqMqlMonth += e.mql;
+        sqSqlMonth += e.sql;
+        sqOppMonth += e.opp;
+        sqWonMonth += e.won;
       }
 
       return {

@@ -180,6 +180,10 @@ Total: 5 closers. Metas WON divididas por closer e distribuidas proporcionalment
 - **Reserva/Contrato** = snapshots de deals nos stages 191/192 (sem filtro de data, sempre o ultimo)
 - **Investimento** = `spend_month` do Meta Ads (somente gasto do mes corrente)
 - **Sync:** usa `["dashboard", "meta-ads"]` (precisa de ambos)
+- **Filtro Midia Paga:** toggle "Todos / Midia Paga" no header (visivel em Resultados e Campanhas)
+  - `?filter=paid` nas APIs `/funil` e `/campanhas`
+  - Paid: Leads = leads Meta Ads, MQL = min(MQL total, leads Meta), SQL/OPP/WON escalados proporcionalmente
+  - All: Leads = leads Meta + MQLs nao-pagos, MQL/SQL/OPP/WON = totais do Pipedrive
 
 ## Meta Ads — Armadilhas Conhecidas
 - `squad_meta_ads` armazena snapshots diarios **acumulados** (lifetime), NAO deltas diarios
