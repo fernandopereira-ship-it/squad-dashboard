@@ -136,6 +136,9 @@ Deno.serve(async (req) => {
       snapshot_date: string;
     }> = [];
 
+    // Collect all deal IDs first, then batch-fetch transbordo dates
+    const allDeals: Array<{ deal: PipedriveDeal; pvName: string; firstCall: PipedriveActivity | undefined }> = [];
+
     for (const pv of preSellers) {
       const [deals, activities] = await Promise.all([
         fetchDealsForUser(pv.user_id, pipedriveToken, sinceDate),
@@ -153,34 +156,78 @@ Deno.serve(async (req) => {
       }
 
       for (const deal of deals) {
-        const firstCall = firstCallByDeal.get(deal.id);
-        const transbordo = deal.add_time;
-        const firstAction = firstCall?.add_time || null;
-
-        // Calculate response_time_minutes (calendar minutes for now, business minutes calculated in API route)
-        let responseMin: number | null = null;
-        if (firstAction) {
-          responseMin = Math.round(
-            (new Date(firstAction).getTime() - new Date(transbordo).getTime()) / 60000
-          );
-        }
-
-        allRows.push({
-          deal_id: deal.id,
-          deal_title: deal.title || "",
-          preseller_name: pv.user_name,
-          transbordo_at: transbordo,
-          first_action_at: firstAction,
-          response_time_minutes: responseMin,
-          action_type: firstCall?.type || null,
-          snapshot_date: today,
-        });
+        allDeals.push({ deal, pvName: pv.user_name, firstCall: firstCallByDeal.get(deal.id) });
       }
     }
 
+    // Batch-fetch transbordo MIA dates from nekt_transbordo_mia
+    const dealIds = allDeals.map((d) => d.deal.id);
+    const transbordoMap = new Map<number, string>();
+
+    if (dealIds.length > 0) {
+      // 1st source: nekt_transbordo_mia (webhook timestamp = real transbordo)
+      for (let i = 0; i < dealIds.length; i += 500) {
+        const batch = dealIds.slice(i, i + 500);
+        const { data: miaRows } = await supabase
+          .from("nekt_transbordo_mia")
+          .select("deal_id, webhook_received_at_br")
+          .in("deal_id", batch);
+        for (const row of miaRows || []) {
+          const did = Number(row.deal_id);
+          const existing = transbordoMap.get(did);
+          // Keep the most recent transbordo (last MIA transfer)
+          if (!existing || row.webhook_received_at_br > existing) {
+            transbordoMap.set(did, row.webhook_received_at_br);
+          }
+        }
+      }
+
+      // 2nd source (fallback): first MIA activity from nekt_pipedrive_activities
+      const missingIds = dealIds.filter((id) => !transbordoMap.has(id));
+      if (missingIds.length > 0) {
+        for (let i = 0; i < missingIds.length; i += 500) {
+          const batch = missingIds.slice(i, i + 500);
+          const { data: actRows } = await supabase
+            .from("nekt_pipedrive_activities")
+            .select("deal_id, add_time, subject")
+            .in("deal_id", batch)
+            .order("add_time", { ascending: true });
+          for (const row of actRows || []) {
+            const did = Number(row.deal_id);
+            if (!transbordoMap.has(did) && /mia/i.test(row.subject || "")) {
+              transbordoMap.set(did, row.add_time);
+            }
+          }
+        }
+      }
+    }
+
+    for (const { deal, pvName, firstCall } of allDeals) {
+      // Transbordo priority: nekt_transbordo_mia > first MIA activity > deal.add_time
+      const transbordo = transbordoMap.get(deal.id) || deal.add_time;
+      const firstAction = firstCall?.add_time || null;
+
+      // Calculate response_time_minutes (calendar minutes for now, business minutes calculated in API route)
+      let responseMin: number | null = null;
+      if (firstAction) {
+        responseMin = Math.round(
+          (new Date(firstAction).getTime() - new Date(transbordo).getTime()) / 60000
+        );
+      }
+
+      allRows.push({
+        deal_id: deal.id,
+        deal_title: deal.title || "",
+        preseller_name: pvName,
+        transbordo_at: transbordo,
+        first_action_at: firstAction,
+        response_time_minutes: responseMin,
+        action_type: firstCall?.type || null,
+        snapshot_date: today,
+      });
+    }
+
     // 4. Upsert into squad_presales_response
-    // Delete stale rows first (deals no longer in scope)
-    const dealIds = allRows.map((r) => r.deal_id);
 
     if (allRows.length > 0) {
       // Delete all existing rows and insert fresh data
