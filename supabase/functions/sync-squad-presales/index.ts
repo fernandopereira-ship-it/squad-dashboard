@@ -182,7 +182,8 @@ Deno.serve(async (req) => {
         }
       }
 
-      // 2nd source (fallback): first MIA activity from nekt_pipedrive_activities
+      // 2nd source (fallback): last MIA activity from nekt_pipedrive_activities
+      // The last MIA activity = moment the lead was actually transferred to the preseller
       const missingIds = dealIds.filter((id) => !transbordoMap.has(id));
       if (missingIds.length > 0) {
         for (let i = 0; i < missingIds.length; i += 500) {
@@ -191,7 +192,7 @@ Deno.serve(async (req) => {
             .from("nekt_pipedrive_activities")
             .select("deal_id, add_time, subject")
             .in("deal_id", batch)
-            .order("add_time", { ascending: true });
+            .order("add_time", { ascending: false });
           for (const row of actRows || []) {
             const did = Number(row.deal_id);
             if (!transbordoMap.has(did) && /mia/i.test(row.subject || "")) {
