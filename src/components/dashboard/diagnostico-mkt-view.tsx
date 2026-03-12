@@ -371,13 +371,17 @@ export function DiagnosticoMktView({ data, loading }: Props) {
         </div>
 
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "960px" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1150px" }}>
             <thead>
               <tr>
                 <SortTh label="Squad" col="squad_id" align="left" minW={60} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                 <SortTh label="Empreendimento" col="empreendimento" align="left" minW={130} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                 <SortTh label="Ad" col="ad_name" align="left" minW={180} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                 <SortTh label="Gasto" col="spend" align="right" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                <th style={{ ...thStyle, textAlign: "right" }}>Leads</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>MQL</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>OPP</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>WON</th>
                 <SortTh label="CTR" col="ctr" align="right" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                 <SortTh label="Freq" col="frequency" align="right" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                 <SortTh label="Severidade" col="severidade" align="center" minW={60} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
@@ -416,6 +420,10 @@ export function DiagnosticoMktView({ data, loading }: Props) {
                       <div style={{ fontSize: "10px", color: T.cinza400, fontFamily: "monospace", marginTop: "1px" }}>ID: {ad.ad_id}</div>
                     </td>
                     <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px" }}>{formatBRL(ad.spend)}</td>
+                    <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px", fontWeight: ad.leads > 0 ? 600 : 400, color: ad.leads > 0 ? T.cardFg : T.cinza300 }}>{ad.leads > 0 ? ad.leads : "-"}</td>
+                    <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px", fontWeight: ad.mql > 0 ? 600 : 400, color: ad.mql > 0 ? T.cardFg : T.cinza300 }}>{ad.mql > 0 ? ad.mql : "-"}</td>
+                    <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px", color: ad.opp > 0 ? T.cardFg : T.cinza300 }}>{ad.opp > 0 ? ad.opp : "-"}</td>
+                    <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px", fontWeight: ad.won > 0 ? 700 : 400, color: ad.won > 0 ? T.verde700 : T.cinza300 }}>{ad.won > 0 ? ad.won : "-"}</td>
                     <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px" }}>{pct(ad.ctr)}</td>
                     <td style={{ ...tdStyle, textAlign: "right", fontSize: "12px" }}>{ad.frequency.toFixed(1)}</td>
                     <td style={{ ...tdStyle, textAlign: "center" }}>
