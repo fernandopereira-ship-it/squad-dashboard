@@ -272,10 +272,28 @@ Depois re-busca dados da view atual. Total: ~41s.
 o daily-open ja substituiu source=open mas won/lost nao rodaram. Resultado:
 dados incompletos (so deals abertos). O front mostra banner de warning quando isso acontece.
 
-Outras views usam functions diferentes:
-- Campanhas/Diagnostico Mkt: `["meta-ads"]`
-- Ociosidade: `["calendar"]`
-- Pre-Venda: `["presales"]`
+### Sync functions por tab
+| View | Functions |
+|------|-----------|
+| Acompanhamento | `["dashboard"]` |
+| Alinhamento | `["dashboard"]` |
+| Campanhas | `["meta-ads"]` |
+| Diagnostico Mkt | `["meta-ads"]` |
+| Ociosidade | `["calendar"]` |
+| Pre-Venda | `["presales"]` |
+| Resultados | `["dashboard", "meta-ads"]` |
+| Balanceamento | `["baserow", "meta-ads"]` |
+
+## Edge Functions — Auth
+- Edge Functions NAO precisam de verificacao manual de auth (isServiceRole)
+- O gateway do Supabase ja valida o token Bearer antes de invocar a funcao
+- Se `--no-verify-jwt` NAO estiver setado no deploy, o gateway rejeita tokens invalidos
+- Verificacao manual causava 401 quando o service_role_key do Vercel diferia do ambiente Edge
+
+## Vercel — Notas
+- `maxDuration = 300` no sync route (sem isso, default e 10s e sync timeout)
+- Deploy: conta do Fernando (fernandopereira-ship-it). Colaboradores precisam ser adicionados pelo owner
+- Auto-deploy via push para branch main no GitHub
 
 ## Convencoes
 - Idioma do codigo: ingles
