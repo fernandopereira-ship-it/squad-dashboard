@@ -230,10 +230,18 @@ export async function GET() {
     // Sort by squad, then name
     result.sort((a, b) => a.squadId - b.squadId || a.name.localeCompare(b.name));
 
+    // Get actual last sync time from database
+    const { data: syncRow } = await supabase
+      .from("squad_calendar_events")
+      .select("synced_at")
+      .order("synced_at", { ascending: false })
+      .limit(1)
+      .single();
+
     const response: OciosidadeData = {
       closers: result,
       dates,
-      syncedAt: new Date().toISOString(),
+      syncedAt: syncRow?.synced_at || new Date().toISOString(),
     };
 
     return NextResponse.json(response);

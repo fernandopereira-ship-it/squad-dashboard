@@ -153,30 +153,30 @@ export function OciosidadeView({ data, loading }: Props) {
           );
         })}
 
-        {/* Disclaimer: sync manual — ocupa espaço restante */}
+        {/* Last sync info card */}
         <div
           style={{
             flex: "1 1 220px",
-            backgroundColor: "#FEF3C7",
-            border: "2px solid #F59E0B",
+            backgroundColor: "#F0F9FF",
+            border: `1px solid ${T.border}`,
             borderRadius: "12px",
             padding: "16px 18px",
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
-            gap: "8px",
+            gap: "6px",
           }}
         >
-          <div style={{ fontSize: "22px", lineHeight: 1 }}>&#9888;</div>
-          <div style={{ fontSize: "13px", fontWeight: 700, color: "#92400E" }}>
-            Sync manual necessario
+          <div style={{ fontSize: "11px", fontWeight: 500, color: T.cinza600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Ultima atualizacao
           </div>
-          <div style={{ fontSize: "11px", color: "#92400E", lineHeight: 1.5 }}>
-            Atualize a base rodando{" "}
-            <code style={{ backgroundColor: "#FDE68A", padding: "2px 6px", borderRadius: "4px", fontWeight: 700, fontSize: "11px" }}>
-              /agenda-check-supabase
-            </code>{" "}
-            no Claude Code antes de analisar.
+          <div style={{ fontSize: "15px", fontWeight: 600, color: T.fg }}>
+            {new Date(data.syncedAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}
+            {" "}
+            {new Date(data.syncedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+          </div>
+          <div style={{ fontSize: "11px", color: T.cinza600, lineHeight: 1.4 }}>
+            Sync automatico diario 7h BRT. Use o botao Atualizar para sincronizar agora.
           </div>
         </div>
       </div>
