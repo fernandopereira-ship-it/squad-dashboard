@@ -1,3 +1,5 @@
+export type MediaFilter = "all" | "paid";
+
 export type TabKey = "mql" | "sql" | "opp" | "won";
 
 export interface DateColumn {

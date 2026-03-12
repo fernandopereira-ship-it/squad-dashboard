@@ -2,18 +2,21 @@
 
 import { useState } from "react";
 import { T, SQUAD_COLORS } from "@/lib/constants";
-import type { CampanhasData, MetaAdRow } from "@/lib/types";
+import type { CampanhasData, MetaAdRow, MediaFilter } from "@/lib/types";
+import { MediaFilterToggle } from "./ui";
 
 interface Props {
   data: CampanhasData | null;
   loading: boolean;
+  mediaFilter: MediaFilter;
+  setMediaFilter: (f: MediaFilter) => void;
 }
 
 function formatBRL(v: number): string {
   return `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export function CampanhasView({ data, loading }: Props) {
+export function CampanhasView({ data, loading, mediaFilter, setMediaFilter }: Props) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [showInfo, setShowInfo] = useState(false);
 
@@ -46,6 +49,7 @@ export function CampanhasView({ data, loading }: Props) {
     <>
       {/* Summary cards */}
       <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
+        <MediaFilterToggle value={mediaFilter} onChange={setMediaFilter} />
         <BrlPillWithTip label="Investimento" value={summary.totalSpendMonth} tip={`Gasto Meta Ads em ${monthLabel(snapshotDate)}`} />
         <StatPillWithTip label="Leads" value={summary.totalLeadsMonth} color={T.verde600} tip={`Leads Meta Ads em ${monthLabel(snapshotDate)}`} />
         <StatPillWithTip label="MQL" value={summary.totalMql} tip={`MQLs do mês (Pipedrive — todos os canais)`} />

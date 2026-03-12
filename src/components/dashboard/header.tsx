@@ -16,8 +16,6 @@ const SeazoneIcon = () => (
   </svg>
 );
 
-export type MediaFilter = "all" | "paid";
-
 interface HeaderProps {
   mainView: string;
   setMainView: (v: string) => void;
@@ -26,12 +24,9 @@ interface HeaderProps {
   lastUpdated?: Date | null;
   user?: { email: string; name: string };
   onLogout?: () => void;
-  mediaFilter: MediaFilter;
-  setMediaFilter: (f: MediaFilter) => void;
 }
 
-export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated, user, onLogout, mediaFilter, setMediaFilter }: HeaderProps) {
-  const showMediaFilter = mainView !== "venda";
+export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated, user, onLogout }: HeaderProps) {
   const [metaDropdownOpen, setMetaDropdownOpen] = useState(false);
   const metaDropdownRef = useRef<HTMLDivElement>(null);
   const isMetaAdsView = (META_ADS_VIEWS as readonly string[]).includes(mainView);
@@ -209,43 +204,6 @@ export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated,
           <ShoppingCart size={12} /> Venda
         </button>
       </div>
-      {showMediaFilter && (
-        <div
-          style={{
-            display: "flex",
-            gap: "2px",
-            backgroundColor: T.cinza50,
-            borderRadius: "9999px",
-            padding: "3px",
-            border: `1px solid ${T.border}`,
-          }}
-        >
-          <button
-            onClick={() => setMediaFilter("all")}
-            style={{
-              ...viewBtnStyle,
-              backgroundColor: mediaFilter === "all" ? T.azul600 : "transparent",
-              color: mediaFilter === "all" ? "#FFF" : T.cinza600,
-              fontSize: "11px",
-              padding: "4px 12px",
-            }}
-          >
-            Todos
-          </button>
-          <button
-            onClick={() => setMediaFilter("paid")}
-            style={{
-              ...viewBtnStyle,
-              backgroundColor: mediaFilter === "paid" ? T.azul600 : "transparent",
-              color: mediaFilter === "paid" ? "#FFF" : T.cinza600,
-              fontSize: "11px",
-              padding: "4px 12px",
-            }}
-          >
-            Mídia Paga
-          </button>
-        </div>
-      )}
       <button style={pillBtnStyle()}>
         <Calendar size={13} /> 4 semanas
       </button>

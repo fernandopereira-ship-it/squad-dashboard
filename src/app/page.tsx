@@ -3,9 +3,9 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/constants";
-import type { TabKey, AcompanhamentoData, AlinhamentoData, CampanhasData, RegrasMqlData, OciosidadeData, PresalesData, FunilData, MisalignedDealsData, PlanejamentoData, OrcamentoData } from "@/lib/types";
+import type { TabKey, MediaFilter, AcompanhamentoData, AlinhamentoData, CampanhasData, RegrasMqlData, OciosidadeData, PresalesData, FunilData, MisalignedDealsData, PlanejamentoData, OrcamentoData } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
-import { Header, type MediaFilter } from "@/components/dashboard/header";
+import { Header } from "@/components/dashboard/header";
 import { AcompanhamentoView } from "@/components/dashboard/acompanhamento-view";
 import { AlinhamentoView } from "@/components/dashboard/alinhamento-view";
 import { BalanceamentoView } from "@/components/dashboard/balanceamento-view";
@@ -34,7 +34,7 @@ export default function Dashboard() {
   const [funilData, setFunilData] = useState<FunilData | null>(null);
   const [planejData, setPlanejData] = useState<PlanejamentoData | null>(null);
   const [orcData, setOrcData] = useState<OrcamentoData | null>(null);
-  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("paid");
   const [syncWarning, setSyncWarning] = useState<string | null>(null);
 
   useEffect(() => {
@@ -196,15 +196,9 @@ export default function Dashboard() {
 
   // Re-fetch when mediaFilter changes — impacts all data views
   useEffect(() => {
-    // Clear cached acompanhamento data since filter changed
-    setAcompData({});
+    // Clear cached campanhas data since filter changed
     setCampData(null);
-    setFunilData(null);
-    if (mainView === "acompanhamento") {
-      fetchAcomp(activeTab, mediaFilter);
-    } else if (mainView === "resultados") {
-      fetchFunil(mediaFilter);
-    } else if (mainView === "campanhas") {
+    if (mainView === "campanhas") {
       fetchCamp(mediaFilter);
     } else if (mainView === "diagnostico-mkt") {
       fetchCamp(mediaFilter);
@@ -213,7 +207,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (mainView === "acompanhamento" && !acompData[activeTab]) {
-      fetchAcomp(activeTab, mediaFilter);
+      fetchAcomp(activeTab, "all");
     } else if (mainView === "alinhamento" && !alinhData) {
       fetchAlinh();
     } else if (mainView === "ociosidade" && !ocioData) {
@@ -228,7 +222,7 @@ export default function Dashboard() {
     } else if (mainView === "presales" && !presalesData) {
       fetchPresales();
     } else if (mainView === "resultados" && !funilData) {
-      fetchFunil(mediaFilter);
+      fetchFunil("all");
     } else if (mainView === "planejamento" && !planejData) {
       fetchPlanej();
     } else if (mainView === "orcamento" && !orcData) {
@@ -265,14 +259,14 @@ export default function Dashboard() {
           setSyncWarning(`Sync parcial: ${details}`);
         }
       }
-      if (mainView === "acompanhamento") await fetchAcomp(activeTab, mediaFilter);
+      if (mainView === "acompanhamento") await fetchAcomp(activeTab, "all");
       else if (mainView === "alinhamento") await fetchAlinh();
       else if (mainView === "ociosidade") await fetchOcio();
       else if (mainView === "balanceamento") await fetchBalanc();
       else if (mainView === "campanhas") await fetchCamp(mediaFilter);
       else if (mainView === "diagnostico-mkt") await fetchCamp(mediaFilter);
       else if (mainView === "presales") await fetchPresales();
-      else if (mainView === "resultados") await fetchFunil(mediaFilter);
+      else if (mainView === "resultados") await fetchFunil("all");
       else if (mainView === "planejamento") await fetchPlanej();
       else if (mainView === "orcamento") await fetchOrc();
       setLastUpdated(new Date());
@@ -286,7 +280,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ fontFamily: T.font, backgroundColor: T.cinza50, minHeight: "100vh", letterSpacing: "0.02em" }}>
-      <Header mainView={mainView} setMainView={setMainView} onRefresh={handleRefresh} loading={loading} lastUpdated={lastUpdated} user={user} onLogout={handleLogout} mediaFilter={mediaFilter} setMediaFilter={setMediaFilter} />
+      <Header mainView={mainView} setMainView={setMainView} onRefresh={handleRefresh} loading={loading} lastUpdated={lastUpdated} user={user} onLogout={handleLogout} />
       {syncWarning && (
         <div
           style={{
@@ -335,10 +329,10 @@ export default function Dashboard() {
         {mainView === "alinhamento" && <AlinhamentoView data={alinhData} misalignedDeals={misalignedDeals} loading={loading} />}
         {mainView === "ociosidade" && <OciosidadeView data={ocioData} loading={loading} />}
         {mainView === "balanceamento" && <BalanceamentoView data={balancData} ocioData={ocioData} loading={loading} />}
-        {mainView === "campanhas" && <CampanhasView data={campData} loading={loading} />}
+        {mainView === "campanhas" && <CampanhasView data={campData} loading={loading} mediaFilter={mediaFilter} setMediaFilter={setMediaFilter} />}
         {mainView === "presales" && <PresalesView data={presalesData} loading={loading} />}
         {mainView === "resultados" && <ResultadosView data={funilData} loading={loading} />}
-        {mainView === "diagnostico-mkt" && <DiagnosticoMktView data={campData} loading={loading} />}
+        {mainView === "diagnostico-mkt" && <DiagnosticoMktView data={campData} loading={loading} mediaFilter={mediaFilter} setMediaFilter={setMediaFilter} />}
         {mainView === "planejamento" && <PlanejamentoView data={planejData} loading={loading} />}
         {mainView === "orcamento" && <OrcamentoView data={orcData} loading={loading} onBudgetSave={handleBudgetSave} />}
         {mainView === "venda" && (

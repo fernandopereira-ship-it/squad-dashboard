@@ -2,11 +2,14 @@
 
 import { useState, useMemo, Fragment } from "react";
 import { T, SQUAD_COLORS, SQUADS } from "@/lib/constants";
-import type { CampanhasData, MetaAdRow, CampanhasEmpSummary } from "@/lib/types";
+import type { CampanhasData, MetaAdRow, CampanhasEmpSummary, MediaFilter } from "@/lib/types";
+import { MediaFilterToggle } from "./ui";
 
 interface Props {
   data: CampanhasData | null;
   loading: boolean;
+  mediaFilter: MediaFilter;
+  setMediaFilter: (f: MediaFilter) => void;
 }
 
 function formatBRL(v: number): string {
@@ -35,7 +38,7 @@ const SEV_COLORS = {
   OK: { border: T.verde600, bg: T.verde50, text: T.verde700, cardBg: T.verde600 },
 } as const;
 
-export function DiagnosticoMktView({ data, loading }: Props) {
+export function DiagnosticoMktView({ data, loading, mediaFilter, setMediaFilter }: Props) {
   const [filtroEmp, setFiltroEmp] = useState("todos");
   const [filtroSev, setFiltroSev] = useState("todos");
   const [filtroSquad, setFiltroSquad] = useState("todos");
@@ -139,7 +142,8 @@ export function DiagnosticoMktView({ data, loading }: Props) {
   return (
     <>
       {/* Summary pills — 3 cards */}
-      <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap", alignItems: "center" }}>
+        <MediaFilterToggle value={mediaFilter} onChange={setMediaFilter} />
         <SummaryCard
           label="Ads Ativos"
           value={String(totalActiveAds)}

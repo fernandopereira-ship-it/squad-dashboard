@@ -1,6 +1,7 @@
 "use client";
 
 import { T } from "@/lib/constants";
+import type { MediaFilter } from "@/lib/types";
 import type { CSSProperties, ReactNode } from "react";
 
 export function Pill({ label, value, color, bg }: { label: string; value: number | string; color?: string; bg?: string }) {
@@ -203,6 +204,62 @@ export function pillBtnPrimaryStyle(): CSSProperties {
     alignItems: "center",
     gap: "5px",
   };
+}
+
+export function MediaFilterToggle({ value, onChange }: { value: MediaFilter; onChange: (f: MediaFilter) => void }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "2px",
+        backgroundColor: T.cinza50,
+        borderRadius: "9999px",
+        padding: "3px",
+        border: `1px solid ${T.border}`,
+      }}
+    >
+      <button
+        onClick={() => onChange("paid")}
+        style={{
+          padding: "4px 12px",
+          borderRadius: "9999px",
+          border: "none",
+          cursor: "pointer",
+          fontSize: "11px",
+          fontWeight: 500,
+          display: "flex",
+          alignItems: "center",
+          gap: "5px",
+          transition: "all 0.15s",
+          letterSpacing: "0.02em",
+          backgroundColor: value === "paid" ? T.azul600 : "transparent",
+          color: value === "paid" ? "#FFF" : T.cinza600,
+        }}
+      >
+        Mídia Paga
+      </button>
+      <button
+        onClick={() => onChange("all")}
+        style={{
+          padding: "4px 12px",
+          borderRadius: "9999px",
+          border: "none",
+          cursor: "pointer",
+          fontSize: "11px",
+          fontWeight: 500,
+          display: "flex",
+          alignItems: "center",
+          gap: "5px",
+          transition: "all 0.15s",
+          letterSpacing: "0.02em",
+          backgroundColor: value === "all" ? T.azul600 : "transparent",
+          color: value === "all" ? "#FFF" : T.cinza600,
+        }}
+      >
+        Todos
+      </button>
+    </div>
+  );
 }
 
 export const viewBtnStyle: CSSProperties = {
