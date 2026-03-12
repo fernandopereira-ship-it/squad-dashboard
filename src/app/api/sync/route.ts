@@ -16,6 +16,7 @@ const FUNCTION_MAP: Record<string, Array<{ name: string; body?: Record<string, u
   ],
   calendar: [{ name: "sync-squad-calendar" }],
   presales: [{ name: "sync-squad-presales" }],
+  baserow: [{ name: "sync-baserow-forms" }],
 };
 
 interface SyncRequest {

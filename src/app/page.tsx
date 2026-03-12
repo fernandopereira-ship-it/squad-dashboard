@@ -192,6 +192,7 @@ export default function Dashboard() {
     if (view === "ociosidade") return ["calendar"];
     if (view === "presales") return ["presales"];
     if (view === "resultados") return ["dashboard", "meta-ads"];
+    if (view === "balanceamento") return ["baserow", "meta-ads"];
     return ["dashboard"];
   };
 
