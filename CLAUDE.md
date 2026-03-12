@@ -103,13 +103,13 @@ ETL principal. Roda em 5 modos separados (cada um fica dentro do limite de 150MB
 
 | Modo | O que faz | Escrita |
 |------|-----------|---------|
-| `daily-open` | Busca deals abertos via `/pipelines/28/deals` | **Substitui** squad_daily_counts |
-| `daily-won` | Busca deals ganhos via `/deals?status=won&stage_id=X` por stage | **Merge** com existente |
-| `daily-lost` | Busca deals perdidos via `/deals?status=lost&stage_id=X` com cutoff 90d | **Merge** com existente |
+| `daily-open` | Busca deals abertos via `/pipelines/28/deals` | **Substitui** squad_daily_counts (source=open) |
+| `daily-won` | Busca deals ganhos via `/deals?status=won&stage_id=X` por stage | **Substitui** (source=won) |
+| `daily-lost` | Busca deals perdidos via `/deals?status=lost&stage_id=X` com cutoff 90d | **Substitui** (source=lost) |
 | `alignment` | Deals abertos + `/users` API | Substitui squad_alignment |
 | `metas` | Calculo DB-only (squad_daily_counts + nekt_meta26_metas) | Upsert squad_metas + squad_ratios |
 
-**IMPORTANTE — Ordem importa:** daily-open DEVE rodar antes de daily-won/daily-lost (open substitui, won/lost fazem merge).
+**Sync Idempotente:** Cada modo usa coluna `source` (open/won/lost) e substitui somente suas proprias rows. PK = `(date, tab, empreendimento, source)`. Rodar qualquer modo multiplas vezes produz o mesmo resultado. API routes somam todos os sources automaticamente.
 
 **Filtros para contagem de deals:**
 - `isMarketingDeal(deal)`: campo canal = "12" (Marketing)
@@ -118,11 +118,14 @@ ETL principal. Roda em 5 modos separados (cada um fica dentro do limite de 150MB
 - Janela: ultimos 35 dias
 
 ### sync-squad-presales
-- Busca deals + atividades (calls) por pre-vendedor do Pipedrive
-- Calcula `first_action_at` (primeira call done=true) e `response_time_minutes`
-- **transbordo_at** (prioridade): 1) `nekt_transbordo_mia.webhook_received_at_br` → 2) **ultima** atividade MIA em `nekt_pipedrive_activities` → 3) `deal.add_time` (fallback)
+- Busca deals + atividades + flow (changelog) por pre-vendedor do Pipedrive
+- Calcula `first_action_at` (primeira atividade done=true) e `response_time_minutes`
+- **transbordo_at** = `max(ultima troca de propriedade para pre-vendedor, ultima atividade MIA)`, fallback `deal.add_time`
+  - Troca de propriedade: via `/deals/{id}/flow` (field_key=user_id, new_value = pre-vendedor ID)
+  - Atividade MIA: via `/deals/{id}/activities` (subject contendo "mia", sem filtro de type)
+  - Salva `last_mia_at` no banco para exibicao no frontend
 - REGRA: transbordo NAO e o add_time do deal — e o momento em que a MIA transferiu o lead para o pre-vendedor
-- REGRA: usar a ULTIMA atividade MIA (nao a primeira) — a ultima MIA e o momento real do transbordo
+- REGRA: usar a ULTIMA troca de propriedade (nao a primeira) — lida com deals que voltam de vendas para pre-vendas
 - Pre-vendedores lidos de `config_pre_vendedores`
 - Snapshot completo: deleta tudo e insere (30 dias lookback)
 
@@ -188,11 +191,27 @@ Total: 5 closers. Metas WON divididas por closer e distribuidas proporcionalment
 - **MQL/SQL/OPP/WON** = `squad_daily_counts` filtrado pelo mes (open + won + lost)
 - **Reserva/Contrato** = snapshots de deals nos stages 191/192 (sem filtro de data, sempre o ultimo)
 - **Investimento** = `spend_month` do Meta Ads (somente gasto do mes corrente)
+- **Custos:** CMQL (spend/MQL), COPP (spend/OPP), CPW (spend/WON) — todos usando dados do mes
 - **Sync:** usa `["dashboard", "meta-ads"]` (precisa de ambos)
-- **Filtro Midia Paga:** toggle "Todos / Midia Paga" no header (visivel em Resultados e Campanhas)
-  - `?filter=paid` nas APIs `/funil` e `/campanhas`
-  - Paid: Leads = leads Meta Ads, MQL = min(MQL total, leads Meta), SQL/OPP/WON escalados proporcionalmente
-  - All: Leads = leads Meta + MQLs nao-pagos, MQL/SQL/OPP/WON = totais do Pipedrive
+
+## Filtro "Todos / Midia Paga"
+Toggle global no header, visivel em todas as abas (exceto Venda). `?filter=paid` nas APIs.
+
+**Logica Paid (mesma em todas as abas):**
+- MQL = `min(MQL total, leads Meta Ads)` por empreendimento
+- SQL/OPP/WON = escalados proporcionalmente pelo ratio `MQL_paid / MQL_total`
+- Leads = leads Meta Ads somente (sem MQLs de outros canais)
+
+**Logica All:**
+- Leads = leads Meta Ads + MQLs nao-pagos
+- MQL/SQL/OPP/WON = totais do Pipedrive (todas as fontes)
+
+**APIs que aceitam `?filter=paid`:**
+- `/api/dashboard` (acompanhamento) — escala daily counts proporcionalmente
+- `/api/dashboard/funil` (resultados)
+- `/api/dashboard/campanhas` (campanhas + diagnostico mkt)
+
+**Frontend:** ao trocar filtro, limpa cache (acompData, campData, funilData) e re-busca dados da aba atual.
 
 ## Meta Ads — Armadilhas Conhecidas
 - `squad_meta_ads` armazena snapshots diarios **acumulados** (lifetime), NAO deltas diarios
@@ -237,7 +256,7 @@ O botao no header chama `POST /api/sync` com `{"functions":["dashboard"]}` que e
 Depois re-busca dados da view atual. Total: ~41s.
 
 **CUIDADO — Sync parcial:** Se o Vercel timeout matar a requisicao antes de daily-won/lost rodarem,
-o daily-open ja SUBSTITUIU os dados (replace=true) e won/lost nao fizeram merge. Resultado:
+o daily-open ja substituiu source=open mas won/lost nao rodaram. Resultado:
 dados incompletos (so deals abertos). O front mostra banner de warning quando isso acontece.
 
 Outras views usam functions diferentes:

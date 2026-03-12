@@ -128,6 +128,8 @@ function SquadTable({ squad, expanded, onToggle }: {
           <span style={{ color: T.cinza600 }}>Contrato <b style={{ color: T.fg }}>{fmt(t.contrato)}</b></span>
           <span style={{ color: T.cinza600 }}>WON <b style={{ color: T.verde600 }}>{fmt(t.won)}</b></span>
           <span style={{ color: T.cinza600 }}>Invest. <b style={{ color: T.fg }}>{fmtMoney(t.spend)}</b></span>
+          <span style={{ color: T.cinza600 }}>CMQL <b style={{ color: T.fg }}>{fmtMoney(t.cmql)}</b></span>
+          <span style={{ color: T.cinza600 }}>COPP <b style={{ color: T.fg }}>{fmtMoney(t.copp)}</b></span>
           <span style={{ color: T.cinza600 }}>CPW <b style={{ color: T.fg }}>{fmtMoney(t.cpw)}</b></span>
         </div>
       </button>
@@ -146,6 +148,8 @@ function SquadTable({ squad, expanded, onToggle }: {
                 <TH right>WON</TH>
                 <TH right>Invest.</TH>
                 <TH right>CPL</TH>
+                <TH right>CMQL</TH>
+                <TH right>COPP</TH>
                 <TH right>CPW</TH>
               </tr>
             </thead>
@@ -164,6 +168,8 @@ function SquadTable({ squad, expanded, onToggle }: {
                   <td style={{ ...cellRightStyle, fontWeight: 700, color: T.verde600 }}>{fmt(e.won)}</td>
                   <td style={cellRightStyle}>{fmtMoney(e.spend)}</td>
                   <td style={cellRightStyle}>{fmtMoney(e.cpl)}</td>
+                  <td style={cellRightStyle}>{fmtMoney(e.cmql)}</td>
+                  <td style={cellRightStyle}>{fmtMoney(e.copp)}</td>
                   <td style={cellRightStyle}>{fmtMoney(e.cpw)}</td>
                 </tr>
               ))}
@@ -178,6 +184,8 @@ function SquadTable({ squad, expanded, onToggle }: {
                 <td style={{ ...cellRightStyle, fontWeight: 700, color: T.verde600 }}>{fmt(t.won)}</td>
                 <td style={{ ...cellRightStyle, fontWeight: 700 }}>{fmtMoney(t.spend)}</td>
                 <td style={{ ...cellRightStyle, fontWeight: 700 }}>{fmtMoney(t.cpl)}</td>
+                <td style={{ ...cellRightStyle, fontWeight: 700 }}>{fmtMoney(t.cmql)}</td>
+                <td style={{ ...cellRightStyle, fontWeight: 700 }}>{fmtMoney(t.copp)}</td>
                 <td style={{ ...cellRightStyle, fontWeight: 700 }}>{fmtMoney(t.cpw)}</td>
               </tr>
             </tbody>
@@ -272,7 +280,7 @@ export function ResultadosView({ data, loading }: ResultadosViewProps) {
             {fmtMoney(g.spend)}
           </div>
           <div style={{ fontSize: "10px", color: T.cinza400, marginTop: "2px" }}>
-            CPW: {fmtMoney(g.cpw)}
+            CMQL: {fmtMoney(g.cmql)} · COPP: {fmtMoney(g.copp)} · CPW: {fmtMoney(g.cpw)}
           </div>
         </div>
       </div>

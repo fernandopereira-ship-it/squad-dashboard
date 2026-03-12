@@ -41,6 +41,7 @@ function buildFunil(
     cpl: cost(spend, leads),
     cmql: cost(spend, mql),
     csql: cost(spend, sql),
+    copp: cost(spend, opp),
     cpw: cost(spend, won),
     ctr: rate(clicks, impressions),
     clickToLead: rate(leads, clicks),

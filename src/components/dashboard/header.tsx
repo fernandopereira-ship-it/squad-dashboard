@@ -28,7 +28,7 @@ interface HeaderProps {
 }
 
 export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated, user, onLogout, mediaFilter, setMediaFilter }: HeaderProps) {
-  const showMediaFilter = mainView === "resultados" || mainView === "campanhas";
+  const showMediaFilter = mainView !== "venda";
   return (
     <header
       style={{

@@ -40,21 +40,22 @@ export function CampanhasView({ data, loading }: Props) {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const lifetimeCpl = summary.totalLeads > 0 ? summary.totalSpend / summary.totalLeads : 0;
-  const lifetimeCpw = summary.cpw;
+  // cmql, copp, cpw now come directly from summary (computed in API)
 
   return (
     <>
       {/* Summary cards */}
       <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
-        <BrlPillWithTip label="Investimento" value={summary.totalSpendMonth} tip={`Gasto em ${monthLabel(snapshotDate)}`} />
-        <StatPillWithTip label="Leads" value={summary.totalLeadsMonth} color={T.verde600} tip={`Leads de ${monthLabel(snapshotDate)}`} />
-        <StatPillWithTip label="MQL" value={summary.totalMql} tip={`MQLs de ${monthLabel(snapshotDate)} (Pipedrive)`} />
-        <StatPillWithTip label="WON" value={summary.totalWon} color={T.verde600} tip={`WONs de ${monthLabel(snapshotDate)} (Pipedrive)`} />
+        <BrlPillWithTip label="Investimento" value={summary.totalSpendMonth} tip={`Gasto Meta Ads em ${monthLabel(snapshotDate)}`} />
+        <StatPillWithTip label="Leads" value={summary.totalLeadsMonth} color={T.verde600} tip={`Leads Meta Ads em ${monthLabel(snapshotDate)}`} />
+        <StatPillWithTip label="MQL" value={summary.totalMql} tip={`MQLs do mês (Pipedrive — todos os canais)`} />
+        <StatPillWithTip label="WON" value={summary.totalWon} color={T.verde600} tip={`WONs do mês (Pipedrive)`} />
         <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-          <BrlPillWithTip label="CPL" value={lifetimeCpl} tip="Gasto lifetime ÷ Leads lifetime" />
+          <BrlPillWithTip label="CMQL" value={summary.cmql} tip="Investimento mês ÷ MQLs mês" />
           <span style={{ color: T.cinza300, fontSize: "16px", fontWeight: 300 }}>|</span>
-          <BrlPillWithTip label="CPW" value={lifetimeCpw} tip="Gasto lifetime ÷ WONs lifetime" />
+          <BrlPillWithTip label="COPP" value={summary.copp} tip="Investimento mês ÷ OPPs mês" />
+          <span style={{ color: T.cinza300, fontSize: "16px", fontWeight: 300 }}>|</span>
+          <BrlPillWithTip label="CPW" value={summary.cpw} tip="Investimento mês ÷ WONs mês" />
         </div>
         <Disclaimer />
         <span style={{ fontSize: "11px", color: T.cinza400, marginLeft: "auto" }}>
@@ -139,9 +140,9 @@ export function CampanhasView({ data, loading }: Props) {
                 gap: "16px",
                 flexWrap: "wrap",
               }}>
-                <span><b>Gasto, Leads, WON (header):</b> {monthLabel(snapshotDate)}</span>
-                <span><b>Tabela (tudo):</b> lifetime</span>
-                <span><b>CPL, CPW:</b> lifetime (gasto ÷ volume acumulado)</span>
+                <span><b>Header:</b> Investimento, Leads, MQL, WON — dados do mês</span>
+                <span><b>CMQL, COPP, CPW (header):</b> Investimento mês ÷ volume mês</span>
+                <span><b>Tabela:</b> dados do mês por empreendimento</span>
               </div>
             )}
 
@@ -257,7 +258,7 @@ export function CampanhasView({ data, loading }: Props) {
 
       <div style={{ marginTop: "10px", textAlign: "right" }}>
         <span style={{ fontSize: "11px", color: T.cinza400 }}>
-          Meta Ads · Conta SZI · Lifetime (desde jun/2024)
+          Meta Ads · Conta SZI · Dados do mês
         </span>
       </div>
     </>
@@ -302,13 +303,13 @@ function Disclaimer() {
             lineHeight: "1.5",
           }}
         >
-          <p style={{ margin: "0 0 8px", fontWeight: 600, color: "#FFF" }}>CPL e CPW</p>
+          <p style={{ margin: "0 0 8px", fontWeight: 600, color: "#FFF" }}>Cards de resumo</p>
           <p style={{ margin: "0 0 10px" }}>
-            Calculados com dados <b>lifetime</b> (gasto acumulado desde jun/2024 ÷ volume acumulado). Investimento, Leads, MQL e WON nos cards acima referem-se ao <b>mês atual</b>.
+            Investimento e Leads referem-se a <b>Meta Ads do mês</b>. MQL e WON vêm do <b>Pipedrive</b> (todos os canais de marketing). CMQL, COPP e CPW são calculados como Investimento mês ÷ volume mês.
           </p>
           <p style={{ margin: "0 0 8px", fontWeight: 600, color: "#FFF" }}>Tabela por empreendimento</p>
           <p style={{ margin: "0 0 10px" }}>
-            Todos os valores da tabela (volume e custos) são <b>lifetime</b>. Se o total de WON do empreendimento não bater com a soma dos WONs dos ads expandidos, é porque parte dos ganhos veio de <b>campanhas já desativadas</b> que não aparecem mais na lista de ads ativos.
+            Dados do <b>mês atual</b>. Leads = Meta Ads, MQL/SQL/OPP/WON = Pipedrive. Custos calculados como Gasto Meta Ads ÷ volume do Pipedrive.
           </p>
           <p style={{ margin: "0 0 8px", fontWeight: 600, color: "#FFF" }}>Coluna WON*</p>
           <p style={{ margin: 0 }}>

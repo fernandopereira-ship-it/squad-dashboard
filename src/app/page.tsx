@@ -51,10 +51,11 @@ export default function Dashboard() {
     router.push("/login");
   };
 
-  const fetchAcomp = useCallback(async (tab: TabKey) => {
+  const fetchAcomp = useCallback(async (tab: TabKey, filter: MediaFilter = "all") => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/dashboard?tab=${tab}`);
+      const params = filter === "paid" ? `?tab=${tab}&filter=paid` : `?tab=${tab}`;
+      const res = await fetch(`/api/dashboard${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setAcompData((prev) => ({ ...prev, [tab]: data }));
@@ -148,18 +149,26 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Re-fetch when mediaFilter changes for relevant views
+  // Re-fetch when mediaFilter changes — impacts all data views
   useEffect(() => {
-    if (mainView === "resultados") {
+    // Clear cached acompanhamento data since filter changed
+    setAcompData({});
+    setCampData(null);
+    setFunilData(null);
+    if (mainView === "acompanhamento") {
+      fetchAcomp(activeTab, mediaFilter);
+    } else if (mainView === "resultados") {
       fetchFunil(mediaFilter);
     } else if (mainView === "campanhas") {
+      fetchCamp(mediaFilter);
+    } else if (mainView === "diagnostico-mkt") {
       fetchCamp(mediaFilter);
     }
   }, [mediaFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (mainView === "acompanhamento" && !acompData[activeTab]) {
-      fetchAcomp(activeTab);
+      fetchAcomp(activeTab, mediaFilter);
     } else if (mainView === "alinhamento" && !alinhData) {
       fetchAlinh();
     } else if (mainView === "ociosidade" && !ocioData) {
@@ -170,7 +179,7 @@ export default function Dashboard() {
     } else if (mainView === "campanhas" && !campData) {
       fetchCamp(mediaFilter);
     } else if (mainView === "diagnostico-mkt" && !campData) {
-      fetchCamp();
+      fetchCamp(mediaFilter);
     } else if (mainView === "presales" && !presalesData) {
       fetchPresales();
     } else if (mainView === "resultados" && !funilData) {
@@ -204,12 +213,12 @@ export default function Dashboard() {
           setSyncWarning(`Sync parcial: ${names} falharam. Os dados podem estar incompletos.`);
         }
       }
-      if (mainView === "acompanhamento") await fetchAcomp(activeTab);
+      if (mainView === "acompanhamento") await fetchAcomp(activeTab, mediaFilter);
       else if (mainView === "alinhamento") await fetchAlinh();
       else if (mainView === "ociosidade") await fetchOcio();
       else if (mainView === "balanceamento") await fetchBalanc();
       else if (mainView === "campanhas") await fetchCamp(mediaFilter);
-      else if (mainView === "diagnostico-mkt") await fetchCamp();
+      else if (mainView === "diagnostico-mkt") await fetchCamp(mediaFilter);
       else if (mainView === "presales") await fetchPresales();
       else if (mainView === "resultados") await fetchFunil(mediaFilter);
       setLastUpdated(new Date());

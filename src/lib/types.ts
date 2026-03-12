@@ -165,6 +165,8 @@ export interface CampanhasSummary {
   totalSql: number;
   totalOpp: number;
   totalWon: number;
+  cmql: number;
+  copp: number;
   cpw: number;
   totalSpendMonth: number;
   totalLeadsMonth: number;
@@ -264,6 +266,7 @@ export interface FunilEmpreendimento {
   cpl: number;   // spend / leads
   cmql: number;  // spend / mql
   csql: number;  // spend / sql
+  copp: number;  // spend / opp
   cpw: number;   // spend / won (Custo por Ganho)
   // Taxas de conversão
   ctr: number;          // clicks / impressions

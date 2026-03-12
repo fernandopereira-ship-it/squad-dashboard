@@ -107,33 +107,23 @@ function countDeals(
 }
 
 // ---- Write counts to DB ----
-async function writeDailyCounts(supabase: any, countsPerTab: Record<Tab, Map<string, number>>, startDate: string, endDate: string, replace: boolean) {
+async function writeDailyCounts(supabase: any, countsPerTab: Record<Tab, Map<string, number>>, startDate: string, endDate: string, source: string) {
   const result: Record<string, number> = {};
   for (const tab of TABS) {
-    let final = countsPerTab[tab];
-
-    if (!replace) {
-      // Merge with existing DB data
-      const { data: existing } = await supabase
-        .from("squad_daily_counts")
-        .select("date, empreendimento, count")
-        .eq("tab", tab)
-        .gte("date", startDate)
-        .lte("date", endDate);
-      if (existing) {
-        final = new Map(final);
-        for (const row of existing) {
-          const key = `${row.date}|${row.empreendimento}`;
-          final.set(key, (final.get(key) || 0) + (row.count || 0));
-        }
-      }
-    }
+    const final = countsPerTab[tab];
 
     const rows = Array.from(final.entries()).map(([key, count]) => {
       const [date, empreendimento] = key.split("|");
-      return { date, tab, empreendimento, count, synced_at: new Date().toISOString() };
+      return { date, tab, empreendimento, count, source, synced_at: new Date().toISOString() };
     });
-    await supabase.from("squad_daily_counts").delete().eq("tab", tab).gte("date", startDate).lte("date", endDate);
+
+    // Delete only rows from THIS source (idempotent — each source replaces only itself)
+    await supabase.from("squad_daily_counts").delete()
+      .eq("tab", tab)
+      .eq("source", source)
+      .gte("date", startDate)
+      .lte("date", endDate);
+
     if (rows.length > 0) {
       for (let i = 0; i < rows.length; i += 500) {
         const batch = rows.slice(i, i + 500);
@@ -141,7 +131,7 @@ async function writeDailyCounts(supabase: any, countsPerTab: Record<Tab, Map<str
         if (error) console.error(`Insert error ${tab}:`, error.message);
       }
     }
-    console.log(`  ${tab}: ${rows.length} rows`);
+    console.log(`  ${tab}: ${rows.length} rows (source=${source})`);
     result[tab] = rows.length;
   }
   return result;
@@ -214,7 +204,7 @@ async function syncDailyOpen(apiToken: string, supabase: any) {
   const contratoTotal = Array.from(stageCounts.contrato.values()).reduce((a, b) => a + b, 0);
   console.log(`  Open deals: ${total}, reserva=${reservaTotal}, contrato=${contratoTotal}`);
   // Write main counts first, then stage counts (so stage counts aren't overwritten)
-  const mainResult = await writeDailyCounts(supabase, countsPerTab, startDate, endDate, true);
+  const mainResult = await writeDailyCounts(supabase, countsPerTab, startDate, endDate, "open");
   await writeStageCounts(supabase, stageCounts);
   return { ...mainResult, reserva: reservaTotal, contrato: contratoTotal };
 }
@@ -274,7 +264,7 @@ async function syncDailyByStatus(apiToken: string, supabase: any, status: string
     if (stoppedEarly) skippedStages++;
   }
   console.log(`  ${status}: ${totalDeals} unique deals (${seenDealIds.size} seen), ${totalMkt} marketing, ${skippedStages} stages stopped early`);
-  return writeDailyCounts(supabase, countsPerTab, startDate, endDate, false);
+  return writeDailyCounts(supabase, countsPerTab, startDate, endDate, status);
 }
 
 // ---- Mode: alignment ----
