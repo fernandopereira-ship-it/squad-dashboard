@@ -381,10 +381,9 @@ function AdRows({ ads }: { ads: MetaAdRow[] }) {
           >
             {/* Nome com bolinha de severidade + ID */}
             <td
-              style={{ ...adTd, paddingLeft: "32px", color: T.cinza700, maxWidth: "280px", overflow: "hidden", textOverflow: "ellipsis" }}
-              title={`${ad.ad_name}\nID: ${ad.ad_id}`}
+              style={{ ...adTd, paddingLeft: "32px", color: T.cinza700, maxWidth: "280px", overflow: "visible", position: "relative" }}
             >
-              <div>
+              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={ad.ad_name}>
                 <SevDot ad={ad} />
                 {ad.ad_name}
               </div>
