@@ -130,8 +130,9 @@ ETL principal. Roda em 5 modos separados (cada um fica dentro do limite de 150MB
 - Busca insights Meta Ads conta SZI (act_205286032338340)
 - Match campaign_name contra empreendimentos (sort by name length DESC para evitar match parcial)
 - Alias: "Vistas de Anita" → "Vistas de Anita II"
-- Filtrar por `effective_status IN (ACTIVE, PAUSED, CAMPAIGN_PAUSED, ADSET_PAUSED)` — inclui campanhas pausadas para nao perder gasto do mes
-- **CUIDADO:** filtrar somente ACTIVE faz com que campanhas pausadas no meio do mes sumam do investimento total. Sempre incluir PAUSED.
+- Busca ACTIVE (lifetime + month) e PAUSED/CAMPAIGN_PAUSED/ADSET_PAUSED (somente month) em chamadas separadas, depois combina
+- **CUIDADO:** buscar todos os status numa unica chamada lifetime causa erro 400 "numero excessivo de linhas". Separar por status resolve.
+- **CUIDADO:** filtrar somente ACTIVE faz com que campanhas pausadas no meio do mes sumam do investimento total. Sempre incluir PAUSED no mes.
 - Para Lead Ads usar `onsite_conversion.lead_grouped` (formularios reais). `action_type === "lead"` inclui pixel leads e infla ~3-4x
 - Diagnosticos: CRITICO (CPL >2x mediana, CTR <0.5%, gasto >R$200 sem lead, freq >3.5) / ALERTA (CPL >P75, CTR <P25, CPM >2x mediana)
 - Loga unmatched_campaigns para detectar novos empreendimentos/aliases
@@ -200,7 +201,8 @@ Total: 5 closers. Metas WON divididas por closer e distribuidas proporcionalment
 - Para exibir dados mensais, pegar o **snapshot mais recente** (`eq snapshot_date`) — NUNCA somar snapshots
 - `impressions`, `clicks`, `ctr`, `cpm`, `frequency` ainda sao lifetime (Edge Function nao salva versao mensal)
 - Edge Function faz 2 chamadas: `fetchAllInsights(lifetime)` + `fetchAllInsights(month)` em paralelo
-- **NUNCA filtrar somente `effective_status=ACTIVE`** — campanhas pausadas no meio do mes perdem o gasto acumulado. Incluir PAUSED, CAMPAIGN_PAUSED, ADSET_PAUSED
+- **NUNCA filtrar somente `effective_status=ACTIVE`** — campanhas pausadas no meio do mes perdem o gasto acumulado. Buscar PAUSED separadamente (somente month) e combinar
+- Meta API retorna erro 400 "numero excessivo de linhas" se buscar ACTIVE+PAUSED juntos no lifetime. Separar as chamadas por status
 
 ## Pipedrive API — Armadilhas Conhecidas
 - `/deals` endpoint **IGNORA** `pipeline_id` param silenciosamente — retorna TODOS os pipelines

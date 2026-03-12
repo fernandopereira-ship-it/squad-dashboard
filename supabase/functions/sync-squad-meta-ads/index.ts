@@ -64,7 +64,7 @@ function percentile(data, p) {
 function median(data) {
   return percentile(data, 50);
 }
-async function fetchAllInsights(token, since, until) {
+async function fetchAllInsights(token, since, until, statuses = ["ACTIVE"]) {
   const fields = "ad_id,ad_name,adset_name,campaign_name,impressions,clicks,spend,cpc,cpm,ctr,frequency,actions,cost_per_action_type";
   const timeRange = JSON.stringify({
     since,
@@ -74,12 +74,7 @@ async function fetchAllInsights(token, since, until) {
     {
       "field": "ad.effective_status",
       "operator": "IN",
-      "value": [
-        "ACTIVE",
-        "PAUSED",
-        "CAMPAIGN_PAUSED",
-        "ADSET_PAUSED"
-      ]
+      "value": statuses
     }
   ]);
   let url = `https://graph.facebook.com/v21.0/${META_ACCOUNT_ID}/insights?level=ad&fields=${encodeURIComponent(fields)}&time_range=${encodeURIComponent(timeRange)}&filtering=${encodeURIComponent(filtering)}&limit=500&access_token=${token}`;
@@ -215,13 +210,26 @@ Deno.serve(async (req)=>{
     const sinceMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
     const sinceLifetime = "2024-06-01";
     const snapshotDate = until;
-    console.log(`sync-squad-meta-ads v9: lifetime ${sinceLifetime} to ${until}, month ${sinceMonth} to ${until} (ACTIVE+PAUSED)`);
-    // 2 chamadas paralelas: lifetime + mês (apenas ads ACTIVE)
-    const [lifetimeInsights, monthInsights] = await Promise.all([
-      fetchAllInsights(metaToken, sinceLifetime, until),
-      fetchAllInsights(metaToken, sinceMonth, until)
+    console.log(`sync-squad-meta-ads v10: lifetime ${sinceLifetime} to ${until}, month ${sinceMonth} to ${until}`);
+    const PAUSED_STATUSES = ["PAUSED", "CAMPAIGN_PAUSED", "ADSET_PAUSED"];
+    // 3 chamadas paralelas: ACTIVE lifetime + ACTIVE month + PAUSED month
+    const [lifetimeInsights, monthActiveInsights, monthPausedInsights] = await Promise.all([
+      fetchAllInsights(metaToken, sinceLifetime, until, ["ACTIVE"]),
+      fetchAllInsights(metaToken, sinceMonth, until, ["ACTIVE"]),
+      fetchAllInsights(metaToken, sinceMonth, until, PAUSED_STATUSES),
     ]);
-    console.log(`  lifetime: ${lifetimeInsights.length} ads, month: ${monthInsights.length} ads`);
+    console.log(`  lifetime(active): ${lifetimeInsights.length}, month(active): ${monthActiveInsights.length}, month(paused): ${monthPausedInsights.length}`);
+    // Merge paused ads into lifetime (use month data as their lifetime since they're paused)
+    const activeAdIds = new Set(lifetimeInsights.map((i) => i.ad_id));
+    for (const ins of monthPausedInsights) {
+      if (!activeAdIds.has(ins.ad_id)) {
+        lifetimeInsights.push(ins);
+        activeAdIds.add(ins.ad_id);
+      }
+    }
+    // Month insights = active + paused
+    const monthInsights = [...monthActiveInsights, ...monthPausedInsights];
+    console.log(`  merged: ${lifetimeInsights.length} lifetime, ${monthInsights.length} month`);
     // Map<ad_id, {spend, leads}> do mês
     const monthMap = new Map();
     for (const ins of monthInsights){
