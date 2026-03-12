@@ -330,18 +330,17 @@ function SevDot({ ad }: { ad: MetaAdRow }) {
 
   return (
     <span
-      style={{ position: "relative", display: "inline-block", verticalAlign: "middle", marginRight: "6px", cursor: diagnosticos.length > 0 ? "help" : "default" }}
+      style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: "20px", height: "20px", flexShrink: 0, cursor: diagnosticos.length > 0 ? "help" : "default" }}
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
     >
-      <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: sevColor }} />
+      <span style={{ display: "block", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: sevColor }} />
       {show && diagnosticos.length > 0 && (
         <div
           style={{
             position: "absolute",
-            bottom: "calc(100% + 8px)",
-            left: "50%",
-            transform: "translateX(-50%)",
+            bottom: "calc(100% + 4px)",
+            left: "0",
             backgroundColor: "#1a1a2e",
             color: "#fff",
             padding: "10px 14px",
@@ -383,12 +382,16 @@ function AdRows({ ads }: { ads: MetaAdRow[] }) {
             <td
               style={{ ...adTd, paddingLeft: "32px", color: T.cinza700, maxWidth: "280px", overflow: "visible", position: "relative" }}
             >
-              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={ad.ad_name}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "0px" }}>
                 <SevDot ad={ad} />
-                {ad.ad_name}
-              </div>
-              <div style={{ fontSize: "10px", color: T.cinza400, fontFamily: "monospace", marginTop: "2px", paddingLeft: "14px" }}>
-                ID: {ad.ad_id}
+                <div style={{ overflow: "hidden", minWidth: 0 }}>
+                  <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={ad.ad_name}>
+                    {ad.ad_name}
+                  </div>
+                  <div style={{ fontSize: "10px", color: T.cinza400, fontFamily: "monospace", marginTop: "2px" }}>
+                    ID: {ad.ad_id}
+                  </div>
+                </div>
               </div>
             </td>
             {/* Gasto */}
