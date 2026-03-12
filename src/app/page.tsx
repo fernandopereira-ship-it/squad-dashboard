@@ -209,8 +209,8 @@ export default function Dashboard() {
         const failed = (syncData.results as Array<{ function: string; status: string; error?: string }>)
           .filter((r) => r.status === "error");
         if (failed.length > 0) {
-          const names = failed.map((f) => f.function).join(", ");
-          setSyncWarning(`Sync parcial: ${names} falharam. Os dados podem estar incompletos.`);
+          const details = failed.map((f) => `${f.function}: ${f.error || "?"}`).join(" | ");
+          setSyncWarning(`Sync parcial: ${details}`);
         }
       }
       if (mainView === "acompanhamento") await fetchAcomp(activeTab, mediaFilter);

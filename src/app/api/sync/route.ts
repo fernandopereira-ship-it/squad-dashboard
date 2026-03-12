@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300; // 5 min — sync sequencial de 6+ Edge Functions leva ~41s+
 
 // Each step runs as a separate Edge Function call to stay within 150MB memory limit.
 // Order matters: daily-open replaces counts, won/lost merge into existing.
