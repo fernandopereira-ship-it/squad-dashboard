@@ -58,7 +58,7 @@ src/
       dashboard/planejamento/route.ts        — Conversao midia paga vs historico
       dashboard/orcamento/route.ts           — GET/POST orcamento mensal + gasto diario
   components/dashboard/
-    header.tsx                               — Navegacao, usuario, botao Atualizar. Dropdown "Meta Ads" agrupa Campanhas/Diagnostico Mkt/Orcamento/Planejamento
+    header.tsx                               — Navegacao, usuario, botao Atualizar. Dropdown "Meta Ads" agrupa Campanhas/Diagnostico Mkt/Orcamento/Planejamento. SEM toggle de midia
     acompanhamento-view.tsx                  — Heatmap 28 dias + metas
     alinhamento-view.tsx                     — Matriz pre-venda x closer + deals desalinhados por squad
     campanhas-view.tsx                       — Summary cards Meta Ads + tabelas por squad
@@ -69,7 +69,7 @@ src/
     presales-view.tsx                        — Performance pre-vendedores + deals recentes
     planejamento-view.tsx                    — Metricas atuais vs historicas por empreendimento
     orcamento-view.tsx                       — Budget mensal editavel, barra progresso, breakdown squad/emp
-    ui.tsx                                   — Componentes reutilizaveis
+    ui.tsx                                   — Componentes reutilizaveis (MediaFilterToggle, Pill, TH, etc)
   lib/
     constants.ts                             — Squads, empreendimentos, closers, UI tokens (T)
     types.ts                                 — Todas as interfaces TypeScript do projeto
@@ -218,7 +218,14 @@ Total: 5 closers. Metas WON divididas por closer e distribuidas proporcionalment
 - **Sync:** usa `["dashboard", "meta-ads"]` (precisa de ambos)
 
 ## Filtro "Todos / Midia Paga"
-Toggle global no header, visivel em todas as abas (exceto Venda). `?filter=paid` nas APIs.
+Toggle localizado dentro de cada view Meta Ads (Campanhas, Diagnostico Mkt). Default: **"Midia Paga"**.
+Componente reutilizavel `MediaFilterToggle` em `ui.tsx`. Type `MediaFilter` centralizado em `types.ts`.
+
+**Onde aparece:**
+- Campanhas — toggle no topo, ao lado dos summary cards
+- Diagnostico Mkt — toggle no topo, ao lado dos summary cards
+- Orcamento / Planejamento — SEM toggle (API nao suporta filtro)
+- Resultados / Acompanhamento — sempre buscam com `"all"` (sem toggle)
 
 **Logica Paid (mesma em todas as abas):**
 - MQL = `min(MQL total, leads Meta Ads)` por empreendimento
@@ -234,7 +241,7 @@ Toggle global no header, visivel em todas as abas (exceto Venda). `?filter=paid`
 - `/api/dashboard/funil` (resultados)
 - `/api/dashboard/campanhas` (campanhas + diagnostico mkt)
 
-**Frontend:** ao trocar filtro, limpa cache (acompData, campData, funilData) e re-busca dados da aba atual.
+**Frontend:** ao trocar filtro, limpa campData e re-busca dados da aba atual (campanhas ou diagnostico-mkt).
 
 ## Meta Ads — Armadilhas Conhecidas
 - `squad_meta_ads` armazena snapshots diarios **acumulados** (lifetime), NAO deltas diarios
