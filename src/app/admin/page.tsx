@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, X, UserPlus, Shield, Edit2, UserX, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, X, UserPlus, Shield, Edit2, UserX, Trash2, BarChart3 } from "lucide-react";
 import { T } from "@/lib/constants";
 import type { UserProfile, UserInvitation, UserRole } from "@/lib/types";
 
@@ -10,6 +10,8 @@ export default function AdminPage() {
   const router = useRouter();
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [invitations, setInvitations] = useState<UserInvitation[]>([]);
+  const [analytics, setAnalytics] = useState<Array<{ email: string; full_name: string | null; total_accesses: number; last_access: string; first_access: string; accesses_last_7d: number; accesses_last_30d: number }>>([]);
+  const [recentAccesses, setRecentAccesses] = useState<Array<{ email: string; full_name: string | null; accessed_at: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -38,7 +40,18 @@ export default function AdminPage() {
     }
   }, [router]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/analytics");
+      if (res.ok) {
+        const data = await res.json();
+        setAnalytics(data.analytics || []);
+        setRecentAccesses(data.recent || []);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => { fetchData(); fetchAnalytics(); }, [fetchData, fetchAnalytics]);
 
   const handleInvite = async () => {
     if (!formEmail || !formName) return;
@@ -395,6 +408,111 @@ export default function AdminPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Analytics de Acesso */}
+        <div
+          style={{
+            backgroundColor: T.bg,
+            borderRadius: "12px",
+            border: `1px solid ${T.border}`,
+            boxShadow: T.elevSm,
+            marginTop: "20px",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ padding: "16px 20px", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: "8px" }}>
+            <BarChart3 size={16} color={T.teal600} />
+            <h2 style={{ fontSize: "15px", fontWeight: 600, color: T.fg, margin: 0 }}>
+              Analytics de Acesso
+            </h2>
+          </div>
+
+          {/* Summary por usuário */}
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Usuário</th>
+                <th style={thStyle}>Email</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>Últimos 7d</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>Últimos 30d</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>Total</th>
+                <th style={thStyle}>Último Acesso</th>
+                <th style={thStyle}>Primeiro Acesso</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analytics.map((a) => (
+                <tr key={a.email}>
+                  <td style={{ ...tdStyle, fontWeight: 500 }}>{a.full_name || "—"}</td>
+                  <td style={{ ...tdStyle, color: T.mutedFg }}>{a.email}</td>
+                  <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600, color: a.accesses_last_7d > 0 ? T.azul600 : T.cinza300 }}>
+                    {a.accesses_last_7d}
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600, color: a.accesses_last_30d > 0 ? T.teal600 : T.cinza300 }}>
+                    {a.accesses_last_30d}
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{a.total_accesses}</td>
+                  <td style={{ ...tdStyle, color: T.mutedFg, fontSize: "12px" }}>
+                    {new Date(a.last_access).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às{" "}
+                    {new Date(a.last_access).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  </td>
+                  <td style={{ ...tdStyle, color: T.mutedFg, fontSize: "12px" }}>
+                    {formatDate(a.first_access)}
+                  </td>
+                </tr>
+              ))}
+              {analytics.length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ ...tdStyle, textAlign: "center", color: T.mutedFg }}>
+                    Nenhum acesso registrado ainda
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Acessos Recentes */}
+        {recentAccesses.length > 0 && (
+          <div
+            style={{
+              backgroundColor: T.bg,
+              borderRadius: "12px",
+              border: `1px solid ${T.border}`,
+              boxShadow: T.elevSm,
+              marginTop: "20px",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ padding: "16px 20px", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: "8px" }}>
+              <BarChart3 size={16} color={T.mutedFg} />
+              <h2 style={{ fontSize: "15px", fontWeight: 600, color: T.fg, margin: 0 }}>
+                Acessos Recentes
+              </h2>
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Usuário</th>
+                  <th style={thStyle}>Email</th>
+                  <th style={thStyle}>Data/Hora</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentAccesses.map((a, i) => (
+                  <tr key={i}>
+                    <td style={{ ...tdStyle, fontWeight: 500 }}>{a.full_name || "—"}</td>
+                    <td style={{ ...tdStyle, color: T.mutedFg }}>{a.email}</td>
+                    <td style={{ ...tdStyle, color: T.mutedFg, fontSize: "12px" }}>
+                      {new Date(a.accessed_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às{" "}
+                      {new Date(a.accessed_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Modal Convidar */}

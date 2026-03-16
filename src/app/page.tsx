@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/constants";
-import type { TabKey, MediaFilter, AcompanhamentoData, AlinhamentoData, CampanhasData, RegrasMqlData, OciosidadeData, PresalesData, FunilData, MisalignedDealsData, PlanejamentoData, OrcamentoData, PerformanceData, BaselineData, DiagVendasData, UserRole } from "@/lib/types";
+import type { TabKey, MediaFilter, AcompanhamentoData, AlinhamentoData, CampanhasData, RegrasMqlData, OciosidadeData, PresalesData, FunilData, MisalignedDealsData, PlanejamentoData, OrcamentoData, PerformanceData, BaselineData, DiagVendasData, ForecastData, UserRole } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { Header } from "@/components/dashboard/header";
 import { AcompanhamentoView } from "@/components/dashboard/acompanhamento-view";
@@ -19,6 +19,7 @@ import { OrcamentoView } from "@/components/dashboard/orcamento-view";
 import { PerformancePreVendasView, PerformanceVendasView } from "@/components/dashboard/performance-view";
 import { BaselineView } from "@/components/dashboard/baseline-view";
 import { DiagnosticoVendasView } from "@/components/dashboard/diagnostico-vendas-view";
+import { ForecastView } from "@/components/dashboard/forecast-view";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -43,6 +44,7 @@ export default function Dashboard() {
   const [perfDays, setPerfDays] = useState(90);
   const [baselineData, setBaselineData] = useState<BaselineData | null>(null);
   const [diagVendasData, setDiagVendasData] = useState<DiagVendasData | null>(null);
+  const [forecastData, setForecastData] = useState<ForecastData | null>(null);
   const [syncWarning, setSyncWarning] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,6 +64,9 @@ export default function Dashboard() {
           .then(({ data: profile }) => {
             if (profile) setUserRole(profile.role as UserRole);
           });
+        // Registrar acesso
+        const fullName = u.user_metadata?.full_name || u.user_metadata?.name || null;
+        Promise.resolve(supabase.rpc("log_user_access", { p_email: u.email, p_full_name: fullName })).catch(() => {});
       }
     });
   }, []);
@@ -239,6 +244,19 @@ export default function Dashboard() {
     }
   }, []);
 
+  const fetchForecast = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/dashboard/forecast");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setForecastData(await res.json());
+    } catch (err) {
+      console.error("Fetch forecast error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const handleBudgetSave = useCallback(async (value: number) => {
     const now = new Date();
     const mes = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -293,6 +311,8 @@ export default function Dashboard() {
       fetchBaseline();
     } else if (mainView === "diagnostico-vendas" && !diagVendasData) {
       fetchDiagVendas();
+    } else if (mainView === "forecast" && !forecastData) {
+      fetchForecast();
     }
   }, [activeTab, mainView]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -314,6 +334,7 @@ export default function Dashboard() {
     setPerfData(null);
     setBaselineData(null);
     setDiagVendasData(null);
+    setForecastData(null);
   };
 
   const fetchCurrentView = async () => {
@@ -330,6 +351,7 @@ export default function Dashboard() {
     else if (mainView === "perf-prevendas" || mainView === "perf-vendas") await fetchPerformance(perfDays);
     else if (mainView === "baseline") await fetchBaseline();
     else if (mainView === "diagnostico-vendas") await fetchDiagVendas();
+    else if (mainView === "forecast") await fetchForecast();
   };
 
   const handleRefresh = async () => {
@@ -424,6 +446,7 @@ export default function Dashboard() {
         {mainView === "perf-vendas" && <PerformanceVendasView data={perfData} loading={loading} daysBack={perfDays} onDaysChange={(d) => { setPerfDays(d); setPerfData(null); fetchPerformance(d); }} />}
         {mainView === "baseline" && <BaselineView data={baselineData} loading={loading} />}
         {mainView === "diagnostico-vendas" && <DiagnosticoVendasView data={diagVendasData} loading={loading} />}
+        {mainView === "forecast" && <ForecastView data={forecastData} loading={loading} />}
         {mainView === "venda" && (
           <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
             <p style={{ fontSize: "16px" }}>Aba Venda — em construção</p>
