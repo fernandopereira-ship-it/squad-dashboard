@@ -60,6 +60,9 @@ interface FlowItem {
 
 // --- Pipedrive API helpers ---
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const RETRY_DELAYS = [5_000, 15_000, 30_000];
+
 async function pipedriveGet<T>(path: string, token: string, params: Record<string, string> = {}): Promise<T[]> {
   const url = new URL(`${PIPEDRIVE_BASE}${path}`);
   for (const [k, v] of Object.entries(params)) {
@@ -75,13 +78,23 @@ async function pipedriveGet<T>(path: string, token: string, params: Record<strin
     url.searchParams.set("start", String(start));
     url.searchParams.set("limit", String(limit));
 
-    const res = await fetch(url.toString());
-    if (!res.ok) {
+    let json: any;
+    for (let attempt = 0; attempt <= 3; attempt++) {
+      const res = await fetch(url.toString());
+      if (res.ok) {
+        json = await res.json();
+        break;
+      }
+      if (res.status === 429 && attempt < 3) {
+        console.warn(`Pipedrive 429 on ${path}, retry ${attempt + 1}/3 in ${RETRY_DELAYS[attempt] / 1000}s`);
+        await sleep(RETRY_DELAYS[attempt]);
+        continue;
+      }
       const text = await res.text();
       throw new Error(`Pipedrive ${path} error ${res.status}: ${text}`);
     }
+    if (!json) throw new Error(`Pipedrive ${path}: max retries exceeded`);
 
-    const json = await res.json();
     if (!json.data || json.data.length === 0) break;
 
     items.push(...json.data);

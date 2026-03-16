@@ -265,7 +265,6 @@ Deno.serve(async (req)=>{
       if (!match) {
         unmatched++;
         if (!unmatchedCampaigns.includes(ins.campaign_name)) unmatchedCampaigns.push(ins.campaign_name);
-        continue;
       }
       const impressions = parseInt(ins.impressions, 10) || 0;
       const clicks = parseInt(ins.clicks, 10) || 0;
@@ -281,8 +280,8 @@ Deno.serve(async (req)=>{
         campaign_name: ins.campaign_name,
         adset_name: ins.adset_name,
         ad_name: ins.ad_name,
-        empreendimento: match.name,
-        squad_id: match.squadId,
+        empreendimento: match ? match.name : "Outros",
+        squad_id: match ? match.squadId : 0,
         impressions,
         clicks,
         spend: Math.round(spend * 100) / 100,
@@ -303,7 +302,9 @@ Deno.serve(async (req)=>{
     if (unmatchedCampaigns.length > 0) {
       console.log(`  Unmatched campaigns: ${unmatchedCampaigns.join(' | ')}`);
     }
-    applyDiagnostics(rows);
+    // Diagnosticos only for matched ads (squad_id > 0)
+    const matchedRows = rows.filter((r) => r.squad_id > 0);
+    applyDiagnostics(matchedRows);
     const criticos = rows.filter((r)=>r.severidade === "CRITICO").length;
     const alertas = rows.filter((r)=>r.severidade === "ALERTA").length;
     await supabase.from("squad_meta_ads").delete().eq("snapshot_date", snapshotDate);

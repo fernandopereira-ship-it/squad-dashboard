@@ -45,13 +45,24 @@ const STAGE_CONTRATO = 192;
 const PIPELINE_STAGES = [392, 184, 186, 338, 346, 339, 187, 340, 208, 312, 313, 311, 191, 192];
 
 // ---- Pipedrive API ----
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function pipedriveGet(apiToken: string, path: string, params: Record<string, string> = {}) {
   const url = new URL(`${BASE}${path}`);
   url.searchParams.set("api_token", apiToken);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`Pipedrive ${path}: ${res.status}`);
-  return res.json();
+  const RETRY_DELAYS = [5_000, 15_000, 30_000];
+  for (let attempt = 0; attempt <= 3; attempt++) {
+    const res = await fetch(url.toString());
+    if (res.ok) return res.json();
+    if (res.status === 429 && attempt < 3) {
+      console.warn(`Pipedrive 429 on ${path}, retry ${attempt + 1}/3 in ${RETRY_DELAYS[attempt] / 1000}s`);
+      await sleep(RETRY_DELAYS[attempt]);
+      continue;
+    }
+    throw new Error(`Pipedrive ${path}: ${res.status}`);
+  }
+  throw new Error(`Pipedrive ${path}: max retries exceeded`);
 }
 
 // ---- Deal helpers ----

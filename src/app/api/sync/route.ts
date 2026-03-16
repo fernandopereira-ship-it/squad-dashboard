@@ -86,7 +86,7 @@ export async function POST(request: Request) {
   }
 
   // Separate Pipedrive-dependent functions from others so we can interleave
-  const PIPEDRIVE_FUNCTIONS = new Set(["dashboard", "deals", "presales"]);
+  const PIPEDRIVE_FUNCTIONS = new Set(["dashboard", "dashboard-light", "deals", "deals-light", "presales"]);
 
   const pipedriveSteps: Array<{ label: string; step: { name: string; body?: Record<string, unknown> } }> = [];
   const otherSteps: Array<{ label: string; step: { name: string; body?: Record<string, unknown> } }> = [];
@@ -104,12 +104,10 @@ export async function POST(request: Request) {
   }
 
   // Interleave: run non-Pipedrive steps between Pipedrive steps to spread out API calls.
-  // Pattern: pipedrive, pipedrive, other, pipedrive, pipedrive, other, ...
+  // Pattern: pipedrive, other, pipedrive, other, ... (1:1 to maximize breathing room)
   const ordered: Array<{ label: string; step: { name: string; body?: Record<string, unknown> } }> = [];
   let pi = 0, oi = 0;
   while (pi < pipedriveSteps.length || oi < otherSteps.length) {
-    // Run up to 2 Pipedrive steps, then 1 other step as a breather
-    if (pi < pipedriveSteps.length) ordered.push(pipedriveSteps[pi++]);
     if (pi < pipedriveSteps.length) ordered.push(pipedriveSteps[pi++]);
     if (oi < otherSteps.length) ordered.push(otherSteps[oi++]);
   }
@@ -120,9 +118,9 @@ export async function POST(request: Request) {
   for (const { label, step } of ordered) {
     const isPipedrive = PIPEDRIVE_FUNCTIONS.has(label.split(":")[0]);
 
-    // Add a small delay between consecutive Pipedrive calls to avoid 429
+    // Add delay between consecutive Pipedrive calls to avoid 429
     if (isPipedrive && lastWasPipedrive) {
-      await new Promise((r) => setTimeout(r, 2000));
+      await new Promise((r) => setTimeout(r, 4000));
     }
 
     try {
