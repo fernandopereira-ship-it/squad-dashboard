@@ -95,6 +95,18 @@ supabase/
     sync-baserow-leads/index.ts              — ETL Baserow leads → Supabase
 ```
 
+## 8 Views (abas no header)
+| View | Componente | API Route | Descrição |
+|------|-----------|-----------|-----------|
+| Campanhas (default) | campanhas-view.tsx | /api/dashboard/campanhas | Meta Ads SZI: summary, por squad, Top 10 |
+| Diagnóstico Mkt | diagnostico-mkt-view.tsx | (usa campanhas) | Badges squad, resumo empreendimento, ads |
+| Alinhamento Squad | alinhamento-view.tsx | /api/dashboard/alinhamento | Deals abertos × owner × empreendimento |
+| Acompanhamento | acompanhamento-view.tsx | /api/dashboard?tab=X | Contagens diárias MQL/SQL/OPP/WON |
+| Pré-Venda | presales-view.tsx | /api/dashboard/presales | Tempo resposta pré-vendedores |
+| Ociosidade | ociosidade-view.tsx | /api/dashboard/ociosidade | Ocupação closers via Calendar |
+| Balanceamento | balanceamento-view.tsx | /api/dashboard/regras-mql | Regras MQL por empreendimento/fonte |
+| Venda | (em construção) | /api/dashboard/funil | Funil ponta a ponta |
+
 ## Tabelas Supabase
 | Tabela | Descricao |
 |--------|-----------|
@@ -474,3 +486,12 @@ npm run dev          # Dev server (porta 3000)
 npm run build        # Build producao
 npm run lint         # ESLint
 ```
+
+## Automação Fireflies (GitHub Actions)
+- **Workflow:** `.github/workflows/sync-fireflies.yml` — cron `0 8 * * *` (5h BRT)
+- **Script:** `scripts/sync_fireflies.py` — busca transcripts, matching, avaliação Claude Sonnet
+- **Secrets GitHub:** FIREFLIES_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY
+- **Status:** PENDENTE — falta `ANTHROPIC_API_KEY` no GitHub Secrets
+- **REGRA:** Requests (não urllib) para Fireflies API — urllib dá 403
+- **REGRA:** Transcripts >35K chars = truncar antes de enviar ao Claude
+- **REGRA:** Alucinações: filtrar patterns conhecidos (opusdei, amara.org, etc)
