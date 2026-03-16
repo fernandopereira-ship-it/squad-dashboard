@@ -58,8 +58,10 @@ src/
       dashboard/planejamento/route.ts        — Conversao midia paga vs historico (?days=N filtro periodo)
       dashboard/planejamento/historico/route.ts — Historico TODAS campanhas Meta Ads (API direta)
       dashboard/orcamento/route.ts           — GET/POST orcamento mensal + gasto diario
+      dashboard/performance/route.ts         — Funil por pessoa (closer, preseller, marketing) + time series
+      dashboard/performance/baseline/route.ts — Cohort analysis: closers alinhados pelo mes de contratacao
   components/dashboard/
-    header.tsx                               — Navegacao, usuario, botao Atualizar. Dropdown "Meta Ads" agrupa Campanhas/Diagnostico Mkt/Orcamento/Planejamento. SEM toggle de midia
+    header.tsx                               — Navegacao, usuario, botao Atualizar. Dropdown "Meta Ads" agrupa Campanhas/Diagnostico Mkt/Orcamento/Planejamento. Dropdown "Perf. Vendas" agrupa Perf. Vendas/Base-Line/Diagnostico Vendas
     acompanhamento-view.tsx                  — Heatmap 28 dias + metas
     alinhamento-view.tsx                     — Matriz pre-venda x closer + deals desalinhados por squad
     campanhas-view.tsx                       — Summary cards Meta Ads + tabelas por squad
@@ -70,6 +72,8 @@ src/
     presales-view.tsx                        — Performance pre-vendedores + deals recentes
     planejamento-view.tsx                    — Metricas atuais vs historicas + filtro periodo (30d/60d/90d/6m/12m/all) + Historico de Campanhas (drill-down campanha→adset→ad)
     orcamento-view.tsx                       — Budget mensal editavel, barra progresso, breakdown squad/emp
+    performance-view.tsx                     — Perf. Vendas (closers + empreendimentos) + Perf. Pre-Vendas. Graficos OPP→WON com mediana e filtro de periodo
+    baseline-view.tsx                        — Base-Line: cohort analysis de closers alinhados pela data de contratacao. Toggle conversao/OPP/WON, heatmap, grafico acumulado com mediana
     ui.tsx                                   — Componentes reutilizaveis (MediaFilterToggle, Pill, TH, etc)
   lib/
     constants.ts                             — Squads, empreendimentos, closers, UI tokens (T)
@@ -303,12 +307,13 @@ Componente reutilizavel `MediaFilterToggle` em `ui.tsx`. Type `MediaFilter` cent
 - **RPCs inexistentes:** `get_ad_funnel_counts` e `get_ad_won_cross_emp` NAO existem no banco (planejadas mas nunca criadas). Chamar RPCs inexistentes nao da throw — o erro e silenciado se checado com `if (res.error) console.warn(...)`. Sempre verificar se a RPC existe nas migrations antes de usa-la
 
 ## Navegacao Header
-Ordem dos botoes: `Resultados | Meta Ads ▼ | Alinhamento Squad | Acompanhamento | Pré-Venda | Ociosidade | Balanceamento | Venda`
+Ordem dos botoes: `Resultados | Meta Ads ▼ | Alinhamento Squad | Acompanhamento | Pré-Venda | Ociosidade | Balanceamento | Perf. Pré-Vendas | Perf. Vendas ▼`
 
 - **Meta Ads** e um dropdown que agrupa: Campanhas, Diagnostico Mkt, Orcamento, Planejamento
-- Dropdown usa `useState` + `useRef` + `useEffect` (click outside listener) em `header.tsx`
-- Constante `META_ADS_VIEWS` define os 4 view keys agrupados
-- Botao fica ativo (dark bg) quando `mainView` e qualquer um dos 4 valores
+- **Perf. Vendas** e um dropdown que agrupa: Perf. Vendas, Base-Line, Diagnostico Vendas
+- Dropdowns usam `useState` + `useRef` + `useEffect` (click outside listener) em `header.tsx`
+- Constantes `META_ADS_VIEWS` e `VENDAS_VIEWS` definem os view keys agrupados
+- Botao fica ativo (dark bg) quando `mainView` e qualquer um dos valores do grupo
 
 ## Botao "Atualizar" (sync)
 O botao sincroniza TODAS as abas de uma vez (nao so a aba atual). Usa modos **light** para evitar timeout/WORKER_LIMIT:
@@ -385,6 +390,23 @@ O botao envia: `["dashboard-light", "meta-ads", "deals-light", "calendar", "pres
 - `maxDuration = 300` no sync route (sem isso, default e 10s e sync timeout)
 - Deploy: conta do Fernando (fernandopereira-ship-it). Colaboradores precisam ser adicionados pelo owner
 - Auto-deploy via push para branch main no GitHub
+
+## Base-Line (Cohort Analysis de Closers)
+- Aba dentro do dropdown "Perf. Vendas" no header
+- **API:** `/api/dashboard/performance/baseline` — busca TODOS os deals (sem cutoff), filtra marketing + empreendimento + closers (V_COLS), agrupa por monthOffset desde contratacao
+- **Data de contratacao** hardcoded em `CLOSER_HIRE_DATES` na API route (nao usa primeiro deal). Valores: Laura=2025-09, Camila=2025-07, Filipe=auto (primeiro deal), Luana=2024-03, Priscila=2025-02. Para alterar, editar o mapa na route
+- **monthZero** = data de contratacao (ou primeiro deal se "auto"). Todos os offsets (M0, M1, ...) partem dessa data
+- **Toggle 3 modos:** Conversao % (OPP→WON por mes), Volume OPP (acumulado), Volume WON (acumulado) — afeta tabela E grafico
+- **Tabela cohort:** heatmap com color coding (verde/amarelo/laranja/vermelho para conversao, intensidade azul para volume). Coluna "vs Mediana" compara total do closer contra mediana do grupo
+- **Grafico SVG:** linhas por closer (cor do squad), linha tracejada amarela (#f59e0b) = mediana. Filtro de periodo (90d/180d/12m/Tudo)
+- **wonAccumulated** e **oppAccumulated** sao campos computados na API e no frontend respectivamente
+- Cada closer tem comprimento de linha diferente (quem entrou depois tem menos meses)
+
+## Graficos OPP→WON (Performance Vendas)
+- Componente `OppToWonChart` em `performance-view.tsx` aceita prop `maxMonths` para filtrar pontos
+- **Mediana:** linha tracejada amarela (#f59e0b) com label "Mediana X%". Aparece quando ha 2+ series (nao aparece no consolidado)
+- **Periodo responsivo:** graficos agora respeitam o filtro de periodo selecionado (30d→1m, 60d→2m, 90d→3m, 180d→6m, 12m→12m, Tudo→sem corte). Antes era fixo em 12 meses
+- `maxMonths=0` ou undefined = sem filtro (mostra todos os pontos)
 
 ## Convencoes
 - Idioma do codigo: ingles
