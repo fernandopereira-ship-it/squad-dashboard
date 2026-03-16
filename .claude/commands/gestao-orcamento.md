@@ -55,7 +55,7 @@ Agregar por empreendimento: soma spend_month e leads_month, conta active/paused.
 ### Sobre concentracao de budget
 - Concentrar demais em poucos empreendimentos causa retornos decrescentes (CPW sobe).
 - O objetivo e encontrar o equilibrio entre **eficiencia** (mais budget onde CPW e menor) e **diversificacao** (manter todos os empreendimentos gerando dados e oportunidades).
-- Piso minimo: **R$150/dia** por empreendimento ativo. Nenhum empreendimento em comercializacao deve ficar com R$0.
+- Piso minimo: **R$300/dia** por empreendimento ativo. Nenhum empreendimento em comercializacao deve ficar com R$0.
 - Teto maximo: **30%** do budget diario total para um unico empreendimento.
 
 ### Sobre amostras pequenas
@@ -102,7 +102,7 @@ O objetivo e **gastar TODO o orcamento ate o fim do mes**.
    - Distribuir o budget remanescente proporcionalmente a `1/CPW_estimado`
    - Ponderar pela confianca dos dados (emps com mais dados recebem mais)
 4. Aplicar restricoes:
-   - Piso: R$150/dia por empreendimento
+   - Piso: R$300/dia por empreendimento
    - Teto: 30% do budget diario total
    - Mudanca maxima: +20% / -15% por semana vs budget atual
 5. **Soma de todos os budgets deve = budget_diario** (gastar tudo)

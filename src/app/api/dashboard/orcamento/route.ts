@@ -249,7 +249,7 @@ export async function GET() {
     }
 
     // Allocate proportionally with min floor R$150/dia
-    const pisoMin = 150;
+    const pisoMin = 300;
     if (totalScore > 0 && budgetOutros > 0) {
       // First pass: raw allocation
       const rawAlloc = new Map<string, number>();
