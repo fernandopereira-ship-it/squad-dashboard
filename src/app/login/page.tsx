@@ -114,6 +114,21 @@ function LoginContent() {
             Falha na autenticação. Tente novamente.
           </div>
         )}
+        {error === "not_invited" && (
+          <div
+            style={{
+              backgroundColor: T.vermelho50,
+              border: `1px solid ${T.vermelho100}`,
+              borderRadius: "8px",
+              padding: "12px 16px",
+              marginBottom: "20px",
+              fontSize: "13px",
+              color: T.destructive,
+            }}
+          >
+            Acesso restrito. Solicite um convite ao administrador.
+          </div>
+        )}
 
         <button
           onClick={handleLogin}

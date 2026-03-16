@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { RefreshCw, BarChart3, Users, Clock, Scale, Megaphone, Timer, ShoppingCart, Activity, LogOut, TrendingUp, Target, Wallet, ChevronDown } from "lucide-react";
+import { RefreshCw, BarChart3, Users, Clock, Scale, Megaphone, Timer, ShoppingCart, Activity, LogOut, TrendingUp, Target, Wallet, ChevronDown, Settings } from "lucide-react";
+import type { UserRole } from "@/lib/types";
 import { T } from "@/lib/constants";
 import { pillBtnStyle, pillBtnPrimaryStyle, viewBtnStyle } from "./ui";
 
@@ -27,9 +28,10 @@ interface HeaderProps {
   lastUpdated?: Date | null;
   user?: { email: string; name: string };
   onLogout?: () => void;
+  userRole?: UserRole | null;
 }
 
-export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated, user, onLogout }: HeaderProps) {
+export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated, user, onLogout, userRole }: HeaderProps) {
   const [metaDropdownOpen, setMetaDropdownOpen] = useState(false);
   const metaDropdownRef = useRef<HTMLDivElement>(null);
   const isMetaAdsView = (META_ADS_VIEWS as readonly string[]).includes(mainView);
@@ -46,6 +48,9 @@ export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated,
   const resultadosDropdownRef = useRef<HTMLDivElement>(null);
   const isResultadosView = (RESULTADOS_VIEWS as readonly string[]).includes(mainView);
 
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (metaDropdownRef.current && !metaDropdownRef.current.contains(e.target as Node)) {
@@ -60,12 +65,15 @@ export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated,
       if (resultadosDropdownRef.current && !resultadosDropdownRef.current.contains(e.target as Node)) {
         setResultadosDropdownOpen(false);
       }
+      if (userDropdownRef.current && !userDropdownRef.current.contains(e.target as Node)) {
+        setUserDropdownOpen(false);
+      }
     }
-    if (metaDropdownOpen || vendasDropdownOpen || preVendasDropdownOpen || resultadosDropdownOpen) {
+    if (metaDropdownOpen || vendasDropdownOpen || preVendasDropdownOpen || resultadosDropdownOpen || userDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [metaDropdownOpen, vendasDropdownOpen, preVendasDropdownOpen, resultadosDropdownOpen]);
+  }, [metaDropdownOpen, vendasDropdownOpen, preVendasDropdownOpen, resultadosDropdownOpen, userDropdownOpen]);
 
   return (
     <header
@@ -356,28 +364,88 @@ export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated,
         )}
       </div>
       {user && (
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginLeft: "4px", flexShrink: 0 }}>
-          <span style={{ fontSize: "12px", color: T.mutedFg, maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {user.name || user.email}
-          </span>
+        <div ref={userDropdownRef} style={{ position: "relative", marginLeft: "4px", flexShrink: 0 }}>
           <button
-            onClick={onLogout}
-            title="Sair"
+            onClick={() => setUserDropdownOpen((v) => !v)}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "4px",
-              padding: "6px 10px",
+              gap: "6px",
+              padding: "6px 12px",
               borderRadius: "9999px",
               border: `1px solid ${T.border}`,
-              backgroundColor: "transparent",
+              backgroundColor: userDropdownOpen ? T.cinza50 : "transparent",
               color: T.mutedFg,
               fontSize: "12px",
               cursor: "pointer",
             }}
           >
-            <LogOut size={12} /> Sair
+            <span style={{ maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {user.name || user.email}
+            </span>
+            <ChevronDown size={10} style={{ transition: "transform 0.2s", transform: userDropdownOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
           </button>
+          {userDropdownOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                right: 0,
+                backgroundColor: "#FFF",
+                border: `1px solid ${T.border}`,
+                borderRadius: "8px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                zIndex: 50,
+                minWidth: "160px",
+                padding: "4px",
+              }}
+            >
+              {userRole === "diretor" && (
+                <button
+                  onClick={() => { window.location.href = "/admin"; setUserDropdownOpen(false); }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "none",
+                    borderRadius: "6px",
+                    backgroundColor: "transparent",
+                    color: T.cinza600,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = T.cinza50)}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                >
+                  <Settings size={13} /> Admin
+                </button>
+              )}
+              <button
+                onClick={() => { onLogout?.(); setUserDropdownOpen(false); }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "none",
+                  borderRadius: "6px",
+                  backgroundColor: "transparent",
+                  color: T.destructive,
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = T.vermelho50)}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+              >
+                <LogOut size={13} /> Sair
+              </button>
+            </div>
+          )}
         </div>
       )}
     </header>

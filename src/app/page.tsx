@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/constants";
-import type { TabKey, MediaFilter, AcompanhamentoData, AlinhamentoData, CampanhasData, RegrasMqlData, OciosidadeData, PresalesData, FunilData, MisalignedDealsData, PlanejamentoData, OrcamentoData, PerformanceData, BaselineData, DiagVendasData } from "@/lib/types";
+import type { TabKey, MediaFilter, AcompanhamentoData, AlinhamentoData, CampanhasData, RegrasMqlData, OciosidadeData, PresalesData, FunilData, MisalignedDealsData, PlanejamentoData, OrcamentoData, PerformanceData, BaselineData, DiagVendasData, UserRole } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { Header } from "@/components/dashboard/header";
 import { AcompanhamentoView } from "@/components/dashboard/acompanhamento-view";
@@ -23,6 +23,7 @@ import { DiagnosticoVendasView } from "@/components/dashboard/diagnostico-vendas
 export default function Dashboard() {
   const router = useRouter();
   const [user, setUser] = useState<{ email: string; name: string } | undefined>();
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [mainView, setMainView] = useState("campanhas");
   const [activeTab, setActiveTab] = useState<TabKey>("mql");
   const [loading, setLoading] = useState(false);
@@ -52,6 +53,15 @@ export default function Dashboard() {
           email: u.email || "",
           name: u.user_metadata?.full_name || u.user_metadata?.name || u.email || "",
         });
+        // Carregar role do user_profiles
+        supabase
+          .from("user_profiles")
+          .select("role")
+          .eq("email", u.email || "")
+          .single()
+          .then(({ data: profile }) => {
+            if (profile) setUserRole(profile.role as UserRole);
+          });
       }
     });
   }, []);
@@ -355,7 +365,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ fontFamily: T.font, backgroundColor: T.cinza50, minHeight: "100vh", letterSpacing: "0.02em" }}>
-      <Header mainView={mainView} setMainView={setMainView} onRefresh={handleRefresh} loading={loading} lastUpdated={lastUpdated} user={user} onLogout={handleLogout} />
+      <Header mainView={mainView} setMainView={setMainView} onRefresh={handleRefresh} loading={loading} lastUpdated={lastUpdated} user={user} onLogout={handleLogout} userRole={userRole} />
       {syncWarning && (
         <div
           style={{

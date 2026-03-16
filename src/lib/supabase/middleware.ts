@@ -52,5 +52,63 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return supabaseResponse;
+  // Verificar user_profiles — acesso por convite
+  const email = user.email!;
+
+  // 1. Checar se tem profile ativo
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("id, role, status")
+    .eq("email", email)
+    .single();
+
+  if (profile) {
+    if (profile.status === "inactive") {
+      await supabase.auth.signOut();
+      if (isApiRoute) {
+        return NextResponse.json({ error: "Account inactive" }, { status: 403 });
+      }
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("error", "not_invited");
+      return NextResponse.redirect(url);
+    }
+    // Profile ativo — acesso permitido
+    return supabaseResponse;
+  }
+
+  // 2. Sem profile — checar convite pendente
+  const { data: invitation } = await supabase
+    .from("user_invitations")
+    .select("id, role, invited_by")
+    .eq("email", email)
+    .gt("expires_at", new Date().toISOString())
+    .single();
+
+  if (invitation) {
+    // Auto-provision: criar profile a partir do convite
+    const fullName = user.user_metadata?.full_name || user.user_metadata?.name || email.split("@")[0];
+
+    await supabase.from("user_profiles").insert({
+      email,
+      full_name: fullName,
+      role: invitation.role,
+      invited_by: invitation.invited_by,
+    });
+
+    // Remover convite usado
+    await supabase.from("user_invitations").delete().eq("id", invitation.id);
+
+    return supabaseResponse;
+  }
+
+  // 3. Sem profile e sem convite — acesso negado
+  await supabase.auth.signOut();
+  if (isApiRoute) {
+    return NextResponse.json({ error: "Not invited" }, { status: 403 });
+  }
+  const url = request.nextUrl.clone();
+  url.pathname = "/login";
+  url.searchParams.set("error", "not_invited");
+  return NextResponse.redirect(url);
 }

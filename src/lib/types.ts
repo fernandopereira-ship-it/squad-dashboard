@@ -1,3 +1,26 @@
+// User Control System
+export type UserRole = "operador" | "diretor";
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  status: "active" | "inactive";
+  invited_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserInvitation {
+  id: string;
+  email: string;
+  role: UserRole;
+  invited_by: string;
+  created_at: string;
+  expires_at: string;
+}
+
 export type MediaFilter = "all" | "paid";
 
 export type TabKey = "mql" | "sql" | "opp" | "won";
@@ -557,6 +580,56 @@ export interface DiagVendasData {
     semAtividadeFutura: number;
     atividadeAtrasada: number;
   };
+}
+
+// Forecast — Previsão de Vendas do Mês
+export interface ForecastStageSnapshot {
+  stage: string;
+  stageOrder: number;
+  openDeals: number;
+  convRate: number;
+  expectedWon: number;
+}
+
+export interface ForecastCloserRow {
+  name: string;
+  squadId: number;
+  wonActual: number;
+  pipeline: number;
+  generation: number;
+  total: number;
+  meta: number;
+  pctMeta: number;
+}
+
+export interface ForecastSquadRow {
+  id: number;
+  name: string;
+  closers: ForecastCloserRow[];
+  wonActual: number;
+  pipeline: number;
+  generation: number;
+  total: number;
+  meta: number;
+  pctMeta: number;
+  stages: ForecastStageSnapshot[];
+}
+
+export interface ForecastData {
+  month: string;
+  diasPassados: number;
+  diasRestantes: number;
+  diasNoMes: number;
+  wonActual: number;
+  pipeline: number;
+  generation: number;
+  total: number;
+  meta: number;
+  pctMeta: number;
+  ranges: { pessimista: number; esperado: number; otimista: number };
+  stages: ForecastStageSnapshot[];
+  squads: ForecastSquadRow[];
+  metodologia: string;
 }
 
 // Pré-Venda — Tempo de resposta dos pré-vendedores
