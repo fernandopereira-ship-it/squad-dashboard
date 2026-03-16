@@ -172,56 +172,89 @@ export function OrcamentoView({ data, loading, onBudgetSave }: OrcamentoViewProp
       </div>
 
       {/* Barra de progresso */}
-      {data.orcamentoTotal > 0 && (
-        <div style={{ ...cardStyle, flex: "unset", minWidth: "unset" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-            <span style={{ fontSize: "12px", color: T.mutedFg }}>R$ 0</span>
-            <span style={{ fontSize: "12px", fontWeight: 600, color: T.fg }}>{formatBRL(data.orcamentoTotal)}</span>
-          </div>
-          <div style={{ position: "relative", height: "28px", backgroundColor: T.cinza100, borderRadius: "8px", overflow: "hidden" }}>
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                height: "100%",
-                width: `${Math.min(pctGasto, 100)}%`,
-                backgroundColor: statusColor(data.status),
-                borderRadius: "8px",
-                transition: "width 0.5s ease",
-                opacity: 0.85,
-              }}
-            />
-            {pctRitmo > 0 && pctRitmo <= 100 && (
+      {data.orcamentoTotal > 0 && (() => {
+        const totalBudgetRec = data.squads.reduce((s, sq) => s + sq.empreendimentos.reduce((se, e) => se + (e.budgetRecomendado || 0), 0), 0);
+        const diasRestantes = data.diasNoMes - data.diasPassados;
+        const projecaoRec = totalBudgetRec > 0 ? data.gastoAtual + totalBudgetRec * diasRestantes : 0;
+        const pctProjecaoRec = projecaoRec > 0 ? (projecaoRec / data.orcamentoTotal) * 100 : 0;
+        return (
+          <div style={{ ...cardStyle, flex: "unset", minWidth: "unset" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+              <span style={{ fontSize: "12px", color: T.mutedFg }}>R$ 0</span>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: T.fg }}>{formatBRL(data.orcamentoTotal)}</span>
+            </div>
+            <div style={{ position: "relative", height: "28px", backgroundColor: T.cinza100, borderRadius: "8px", overflow: "hidden" }}>
+              {/* Projeção com budget recomendado (azul, atrás) */}
+              {projecaoRec > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    height: "100%",
+                    width: `${Math.min(pctProjecaoRec, 100)}%`,
+                    backgroundColor: T.azul600,
+                    borderRadius: "8px",
+                    transition: "width 0.5s ease",
+                    opacity: 0.25,
+                  }}
+                  title={`Projeção recomendada: ${formatBRL(projecaoRec)}`}
+                />
+              )}
+              {/* Gasto atual (cor do status, na frente) */}
               <div
                 style={{
                   position: "absolute",
                   top: 0,
-                  left: `${pctRitmo}%`,
+                  left: 0,
                   height: "100%",
-                  width: "2px",
-                  backgroundColor: T.fg,
-                  opacity: 0.5,
+                  width: `${Math.min(pctGasto, 100)}%`,
+                  backgroundColor: statusColor(data.status),
+                  borderRadius: "8px",
+                  transition: "width 0.5s ease",
+                  opacity: 0.85,
                 }}
-                title={`Ritmo ideal: ${formatBRL(data.ritmoIdeal)}`}
               />
-            )}
-            <div style={{ position: "absolute", top: 0, left: 0, height: "100%", display: "flex", alignItems: "center", paddingLeft: "10px" }}>
-              <span style={{ fontSize: "11px", fontWeight: 600, color: pctGasto > 15 ? "#FFF" : T.fg }}>
-                {formatBRL(data.gastoAtual)} ({pctGasto.toFixed(1)}%)
+              {/* Ritmo ideal marker */}
+              {pctRitmo > 0 && pctRitmo <= 100 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: `${pctRitmo}%`,
+                    height: "100%",
+                    width: "2px",
+                    backgroundColor: T.fg,
+                    opacity: 0.5,
+                  }}
+                  title={`Ritmo ideal: ${formatBRL(data.ritmoIdeal)}`}
+                />
+              )}
+              {/* Label gasto atual */}
+              <div style={{ position: "absolute", top: 0, left: 0, height: "100%", display: "flex", alignItems: "center", paddingLeft: "10px" }}>
+                <span style={{ fontSize: "11px", fontWeight: 600, color: pctGasto > 15 ? "#FFF" : T.fg }}>
+                  {formatBRL(data.gastoAtual)} ({pctGasto.toFixed(1)}%)
+                </span>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px" }}>
+              <span style={{ fontSize: "11px", color: T.mutedFg }}>
+                Dia {data.diasPassados} de {data.diasNoMes}
               </span>
+              <div style={{ display: "flex", gap: "12px" }}>
+                {projecaoRec > 0 && (
+                  <span style={{ fontSize: "11px", color: T.azul600, fontWeight: 500 }}>
+                    Projeção recomendada: {formatBRL(projecaoRec)} ({pctProjecaoRec.toFixed(0)}%)
+                  </span>
+                )}
+                <span style={{ fontSize: "11px", color: T.mutedFg }}>
+                  Ritmo ideal: {formatBRL(data.ritmoIdeal)}
+                </span>
+              </div>
             </div>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px" }}>
-            <span style={{ fontSize: "11px", color: T.mutedFg }}>
-              Dia {data.diasPassados} de {data.diasNoMes}
-            </span>
-            <span style={{ fontSize: "11px", color: T.mutedFg }}>
-              Ritmo ideal: {formatBRL(data.ritmoIdeal)}
-            </span>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Tabela breakdown por squad com empreendimentos */}
       <div style={{ backgroundColor: T.card, border: `1px solid ${T.border}`, borderRadius: "12px", overflow: "hidden", boxShadow: T.elevSm }}>
