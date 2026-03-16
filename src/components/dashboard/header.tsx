@@ -8,6 +8,7 @@ import { pillBtnStyle, pillBtnPrimaryStyle, viewBtnStyle } from "./ui";
 const META_ADS_VIEWS = ["campanhas", "diagnostico-mkt", "orcamento", "planejamento"] as const;
 const VENDAS_VIEWS = ["perf-vendas", "baseline", "diagnostico-vendas"] as const;
 const PRE_VENDAS_VIEWS = ["presales", "perf-prevendas"] as const;
+const RESULTADOS_VIEWS = ["resultados", "acompanhamento"] as const;
 
 const SeazoneIcon = () => (
   <svg width="28" height="29" viewBox="0 0 48 49" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -41,6 +42,10 @@ export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated,
   const preVendasDropdownRef = useRef<HTMLDivElement>(null);
   const isPreVendasView = (PRE_VENDAS_VIEWS as readonly string[]).includes(mainView);
 
+  const [resultadosDropdownOpen, setResultadosDropdownOpen] = useState(false);
+  const resultadosDropdownRef = useRef<HTMLDivElement>(null);
+  const isResultadosView = (RESULTADOS_VIEWS as readonly string[]).includes(mainView);
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (metaDropdownRef.current && !metaDropdownRef.current.contains(e.target as Node)) {
@@ -52,12 +57,15 @@ export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated,
       if (preVendasDropdownRef.current && !preVendasDropdownRef.current.contains(e.target as Node)) {
         setPreVendasDropdownOpen(false);
       }
+      if (resultadosDropdownRef.current && !resultadosDropdownRef.current.contains(e.target as Node)) {
+        setResultadosDropdownOpen(false);
+      }
     }
-    if (metaDropdownOpen || vendasDropdownOpen || preVendasDropdownOpen) {
+    if (metaDropdownOpen || vendasDropdownOpen || preVendasDropdownOpen || resultadosDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [metaDropdownOpen, vendasDropdownOpen, preVendasDropdownOpen]);
+  }, [metaDropdownOpen, vendasDropdownOpen, preVendasDropdownOpen, resultadosDropdownOpen]);
 
   return (
     <header
@@ -89,16 +97,64 @@ export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated,
           border: `1px solid ${T.border}`,
         }}
       >
-        <button
-          onClick={() => setMainView("resultados")}
-          style={{
-            ...viewBtnStyle,
-            backgroundColor: mainView === "resultados" ? T.fg : "transparent",
-            color: mainView === "resultados" ? "#FFF" : T.cinza600,
-          }}
-        >
-          <TrendingUp size={12} /> Resultados
-        </button>
+        <div ref={resultadosDropdownRef} style={{ position: "relative" }}>
+          <button
+            onClick={() => setResultadosDropdownOpen((v) => !v)}
+            style={{
+              ...viewBtnStyle,
+              backgroundColor: isResultadosView ? T.fg : "transparent",
+              color: isResultadosView ? "#FFF" : T.cinza600,
+              gap: "4px",
+            }}
+          >
+            <TrendingUp size={12} /> Resultados <ChevronDown size={10} style={{ transition: "transform 0.2s", transform: resultadosDropdownOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+          </button>
+          {resultadosDropdownOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                left: 0,
+                backgroundColor: "#FFF",
+                border: `1px solid ${T.border}`,
+                borderRadius: "8px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                zIndex: 50,
+                minWidth: "180px",
+                padding: "4px",
+              }}
+            >
+              {([
+                { key: "resultados", label: "Funil", icon: <TrendingUp size={13} /> },
+                { key: "acompanhamento", label: "Acompanhamento", icon: <BarChart3 size={13} /> },
+              ] as const).map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => { setMainView(item.key); setResultadosDropdownOpen(false); }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "none",
+                    borderRadius: "6px",
+                    backgroundColor: mainView === item.key ? T.azul50 : "transparent",
+                    color: mainView === item.key ? T.fg : T.cinza600,
+                    fontWeight: mainView === item.key ? 600 : 400,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                  onMouseEnter={(e) => { if (mainView !== item.key) (e.currentTarget.style.backgroundColor = T.cinza50); }}
+                  onMouseLeave={(e) => { if (mainView !== item.key) (e.currentTarget.style.backgroundColor = "transparent"); }}
+                >
+                  {item.icon} {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div ref={metaDropdownRef} style={{ position: "relative" }}>
           <button
             onClick={() => setMetaDropdownOpen((v) => !v)}
@@ -168,16 +224,6 @@ export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated,
           }}
         >
           <Users size={12} /> Alinhamento Squad
-        </button>
-        <button
-          onClick={() => setMainView("acompanhamento")}
-          style={{
-            ...viewBtnStyle,
-            backgroundColor: mainView === "acompanhamento" ? T.fg : "transparent",
-            color: mainView === "acompanhamento" ? "#FFF" : T.cinza600,
-          }}
-        >
-          <BarChart3 size={12} /> Acompanhamento
         </button>
         <div ref={preVendasDropdownRef} style={{ position: "relative" }}>
           <button
