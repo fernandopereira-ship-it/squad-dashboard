@@ -55,7 +55,7 @@ src/
       dashboard/ociosidade/route.ts          — Disponibilidade closers (Google Calendar)
       dashboard/presales/route.ts            — Tempo de resposta pre-vendedores
       dashboard/regras-mql/route.ts          — Regras e taxas de qualificacao MQL
-      dashboard/planejamento/route.ts        — Conversao midia paga vs historico
+      dashboard/planejamento/route.ts        — Conversao midia paga vs historico (?days=N filtro periodo)
       dashboard/planejamento/historico/route.ts — Historico TODAS campanhas Meta Ads (API direta)
       dashboard/orcamento/route.ts           — GET/POST orcamento mensal + gasto diario
   components/dashboard/
@@ -68,7 +68,7 @@ src/
     balanceamento-view.tsx                   — Taxas de qualificacao por empreendimento/fonte
     resultados-view.tsx                      — Funil comercial Leads→WON + Reserva/Contrato
     presales-view.tsx                        — Performance pre-vendedores + deals recentes
-    planejamento-view.tsx                    — Metricas atuais vs historicas + Historico de Campanhas (drill-down campanha→adset→ad)
+    planejamento-view.tsx                    — Metricas atuais vs historicas + filtro periodo (30d/60d/90d/6m/12m/all) + Historico de Campanhas (drill-down campanha→adset→ad)
     orcamento-view.tsx                       — Budget mensal editavel, barra progresso, breakdown squad/emp
     ui.tsx                                   — Componentes reutilizaveis (MediaFilterToggle, Pill, TH, etc)
   lib/
@@ -107,7 +107,7 @@ supabase/
 | `squad_baserow_forms` | Formularios do Baserow (fonte: Baserow). Populada por `sync-baserow-forms`. |
 | `squad_monthly_counts` | Contagens mensais acumuladas por tab x empreendimento (rollup de squad_daily_counts). Populada pelo modo `monthly-rollup`. |
 | `squad_orcamento` | Orcamento mensal global SZI. PK = `mes` (YYYY-MM). Input manual via aba Orcamento. |
-| `squad_deals` | Banco centralizado de deals Pipedrive (1 row por deal). PK = `deal_id`. Colunas: status, stage_id, canal, empreendimento, is_marketing (gerada), max_stage_order (Flow API), flow_fetched. RPC `get_planejamento_counts` usa essa tabela. |
+| `squad_deals` | Banco centralizado de deals Pipedrive (1 row por deal). PK = `deal_id`. Colunas: status, stage_id, canal, empreendimento, is_marketing (gerada), max_stage_order (Flow API), flow_fetched, lost_reason, rd_source. RPC `get_planejamento_counts` usa essa tabela. Filtros RPC: `is_marketing=true`, `rd_source ILIKE '%paga%'`, `lost_reason <> 'Duplicado/Erro'`. |
 
 ## Edge Functions
 
@@ -144,7 +144,7 @@ Banco centralizado de deals do Pipedrive pipeline 28. Roda em 4 modos:
 - **Tabela:** `squad_deals` (1 row por deal, PK = deal_id)
 - **Coluna gerada:** `is_marketing = (canal = '12')` — evita recheck em queries
 - **max_stage_order:** open = stage_order atual, won = 14, lost = Flow API (historico de stages)
-- **RPC:** `get_planejamento_counts(months_back)` — counts MQL/SQL/OPP/WON por month/empreendimento usando max_stage_order thresholds (2/5/9)
+- **RPC:** `get_planejamento_counts(months_back, days_back)` — counts MQL/SQL/OPP/WON por month/empreendimento usando max_stage_order thresholds (2/5/9). Param `days_back`: 0 = default 12 meses, >0 = N dias, -1 = sem filtro de data
 - **Planejamento** usa essa tabela via RPC ao inves de squad_monthly_counts
 - **Deploy:** `supabase functions deploy sync-squad-deals --no-verify-jwt`
 
@@ -342,6 +342,14 @@ O botao envia: `["dashboard-light", "meta-ads", "deals-light", "calendar", "pres
 | Balanceamento | `["baserow", "meta-ads"]` |
 | Planejamento | `["deals", "meta-ads"]` |
 | Orcamento | `["meta-ads"]` |
+
+## Planejamento — Filtro de Periodo
+- Select no topo da view com opcoes: 30d, 60d, 90d, 6 meses, 12 meses (default), Todo historico
+- Param `?days=N` na API route (`0` = 12 meses, `>0` = N dias, `-1` = sem filtro de data)
+- RPC `get_planejamento_counts(months_back, days_back)` aceita ambos os params
+- Meta Ads historico tambem respeita o filtro (`gte snapshot_date` com cutoff calculado)
+- Ao trocar filtro, limpa `planejData` e re-busca (state `planejDays` em page.tsx)
+- Filtros de deals na RPC: pipeline SZI (28), canal Marketing, rd_source contendo "paga", motivo de perda ≠ "Duplicado/Erro"
 
 ## Historico de Campanhas (dentro de Planejamento)
 - Secao sempre aberta na aba Planejamento, fetch automatico ao carregar
