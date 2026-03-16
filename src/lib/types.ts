@@ -353,6 +353,16 @@ export interface OrcamentoData {
   status: "ok" | "alerta" | "critico";
   squads: OrcamentoSquadBreakdown[];
   snapshotDate: string;
+  log: OrcamentoLogEntry[];
+}
+
+export interface OrcamentoLogEntry {
+  date: string;
+  empreendimento: string;
+  squadId: number;
+  budgetRecomendado: number;
+  budgetReal: number;
+  explicacao: string;
 }
 
 export interface OrcamentoEmpBreakdown {
@@ -414,6 +424,7 @@ export interface PerformanceEmpBreakdown {
   mqlToSql: number;
   sqlToOpp: number;
   oppToWon: number;
+  mqlToWon: number;
 }
 
 export interface PerformancePersonRow {
@@ -427,6 +438,7 @@ export interface PerformancePersonRow {
   mqlToSql: number;
   sqlToOpp: number;
   oppToWon: number;
+  mqlToWon: number;
   byEmp: PerformanceEmpBreakdown[];
 }
 
@@ -443,7 +455,7 @@ export interface PerformanceSquadSummary {
   closers: PerformancePersonRow[];
   preseller: PerformancePresellerRow;
   marketing: PerformancePersonRow;
-  totals: { mql: number; sql: number; opp: number; won: number; mqlToSql: number; sqlToOpp: number; oppToWon: number };
+  totals: { mql: number; sql: number; opp: number; won: number; mqlToSql: number; sqlToOpp: number; oppToWon: number; mqlToWon: number };
 }
 
 export interface PerformanceData {
@@ -451,7 +463,7 @@ export interface PerformanceData {
   allClosers: PerformancePersonRow[];
   allPresellers: PerformancePresellerRow[];
   allMarketing: PerformancePersonRow[];
-  grandTotals: { mql: number; sql: number; opp: number; won: number; mqlToSql: number; sqlToOpp: number; oppToWon: number };
+  grandTotals: { mql: number; sql: number; opp: number; won: number; mqlToSql: number; sqlToOpp: number; oppToWon: number; mqlToWon: number };
 }
 
 // Pré-Venda — Tempo de resposta dos pré-vendedores

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { SQUADS } from "@/lib/constants";
-import type { OrcamentoData, OrcamentoSquadBreakdown, OrcamentoEmpBreakdown } from "@/lib/types";
+import type { OrcamentoData, OrcamentoSquadBreakdown, OrcamentoEmpBreakdown, OrcamentoLogEntry } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -324,6 +324,52 @@ export async function GET() {
       };
     });
 
+    // ===== Log: detect when real daily spend ≈ recommended budget =====
+    const today = now.toISOString().split("T")[0];
+    const logInserts: Array<{ date: string; empreendimento: string; squad_id: number; budget_recomendado: number; budget_real: number; explicacao: string }> = [];
+
+    for (const sq of squadsBreakdown) {
+      for (const emp of sq.empreendimentos) {
+        const rec = emp.budgetRecomendado || 0;
+        const real = emp.gastoDiario;
+        if (rec <= 0 || real <= 0) continue;
+        // Match if within 25% tolerance
+        const ratio = real / rec;
+        if (ratio >= 0.75 && ratio <= 1.25) {
+          logInserts.push({
+            date: today,
+            empreendimento: emp.emp,
+            squad_id: sq.id,
+            budget_recomendado: rec,
+            budget_real: Math.round(real),
+            explicacao: emp.budgetExplicacao || "",
+          });
+        }
+      }
+    }
+
+    if (logInserts.length > 0) {
+      await supabase.from("squad_orcamento_log").upsert(logInserts, { onConflict: "date,empreendimento" });
+    }
+
+    // Fetch log entries (last 30 days)
+    const logCutoff = new Date(now.getTime() - 30 * 86400000).toISOString().split("T")[0];
+    const { data: logRows } = await supabase
+      .from("squad_orcamento_log")
+      .select("*")
+      .gte("date", logCutoff)
+      .order("date", { ascending: false })
+      .order("empreendimento");
+
+    const log: OrcamentoLogEntry[] = (logRows || []).map((r: Record<string, unknown>) => ({
+      date: r.date as string,
+      empreendimento: r.empreendimento as string,
+      squadId: r.squad_id as number,
+      budgetRecomendado: Number(r.budget_recomendado),
+      budgetReal: Number(r.budget_real),
+      explicacao: r.explicacao as string,
+    }));
+
     const result: OrcamentoData = {
       mes: curMonth,
       orcamentoTotal,
@@ -336,6 +382,7 @@ export async function GET() {
       status,
       squads: squadsBreakdown,
       snapshotDate,
+      log,
     };
 
     return NextResponse.json(result);

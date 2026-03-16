@@ -372,6 +372,42 @@ export function OrcamentoView({ data, loading, onBudgetSave }: OrcamentoViewProp
         </table>
       </div>
 
+      {/* Log de alterações */}
+      {data.log && data.log.length > 0 && (
+        <div style={{ backgroundColor: T.card, border: `1px solid ${T.border}`, borderRadius: "12px", overflow: "hidden", boxShadow: T.elevSm }}>
+          <div style={{ padding: "12px 16px", borderBottom: `1px solid ${T.border}` }}>
+            <span style={{ fontSize: "13px", fontWeight: 700, color: T.fg }}>Log de Alterações</span>
+            <span style={{ fontSize: "11px", color: T.mutedFg, marginLeft: "8px" }}>
+              Registrado quando o gasto diário real confirma o budget recomendado (±25%)
+            </span>
+          </div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <TH>Data</TH>
+                <TH>Empreendimento</TH>
+                <TH right>Budget Recom.</TH>
+                <TH right>Gasto Real</TH>
+                <TH>Motivo</TH>
+              </tr>
+            </thead>
+            <tbody>
+              {data.log.map((entry, i) => (
+                <tr key={`log-${i}`} style={i % 2 === 0 ? {} : { backgroundColor: T.cinza50 }}>
+                  <td style={{ ...cellStyle, fontSize: "12px", whiteSpace: "nowrap" }}>
+                    {new Date(entry.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                  </td>
+                  <td style={{ ...cellStyle, fontSize: "12px" }}>{entry.empreendimento}</td>
+                  <td style={{ ...cellRightStyle, fontSize: "12px" }}>{formatBRL(entry.budgetRecomendado)}</td>
+                  <td style={{ ...cellRightStyle, fontSize: "12px" }}>{formatBRL(entry.budgetReal)}</td>
+                  <td style={{ ...cellStyle, fontSize: "11px", color: T.cinza600, maxWidth: "400px" }}>{entry.explicacao}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {/* Rodapé */}
       <div style={{ fontSize: "11px", color: T.mutedFg, textAlign: "right" }}>
         Meta Ads · Atualizado {data.snapshotDate}
