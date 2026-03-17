@@ -100,11 +100,11 @@ export async function GET() {
           .lt("won_time", mesFim)
           .range(o, o + ps - 1),
       ),
-      // 5. Metas WON do mês
+      // 5. Metas WON do mês (month é DATE com dia, ex: "2026-03-01")
       supabase
         .from("squad_metas")
-        .select("squad_id, tab, value")
-        .eq("month", mesStr)
+        .select("squad_id, tab, meta")
+        .eq("month", `${mesStr}-01`)
         .eq("tab", "won"),
     ]);
 
@@ -205,7 +205,7 @@ export async function GET() {
     const metaBySquad: Record<number, number> = {};
     if (metasRows.data) {
       for (const m of metasRows.data) {
-        metaBySquad[m.squad_id] = m.value || 0;
+        metaBySquad[m.squad_id] = m.meta || 0;
       }
     }
 
