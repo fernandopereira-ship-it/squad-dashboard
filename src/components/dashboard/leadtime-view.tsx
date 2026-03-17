@@ -178,6 +178,16 @@ export function LeadtimeView({ data, loading, daysBack, onDaysChange }: Props) {
 
 type DealFilter = "all" | "open";
 
+function computeStats(deals: LeadtimeDealRow[]): { avg: number; median: number; count: number } {
+  const days = deals.map((d) => d.cycleDays).filter((d) => d > 0);
+  if (days.length === 0) return { avg: 0, median: 0, count: 0 };
+  const sorted = [...days].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const med = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  const average = sorted.reduce((s, v) => s + v, 0) / sorted.length;
+  return { avg: Math.round(average * 10) / 10, median: Math.round(med * 10) / 10, count: days.length };
+}
+
 function CloserSection({ byCloser, globalAvg }: { byCloser: LeadtimeData["byCloser"]; globalAvg: number }) {
   const [expandedClosers, setExpandedClosers] = useState<Set<string>>(new Set());
   const [dealFilter, setDealFilter] = useState<DealFilter>("all");
@@ -191,10 +201,21 @@ function CloserSection({ byCloser, globalAvg }: { byCloser: LeadtimeData["byClos
     });
   };
 
+  // Compute global avg for the current filter (for color coding)
+  const allFilteredDeals = byCloser.flatMap((c) =>
+    dealFilter === "open" ? c.deals.filter((d) => d.status === "open") : c.deals,
+  );
+  const globalFilteredStats = computeStats(allFilteredDeals);
+
   return (
     <div style={{ backgroundColor: "#FFF", border: `1px solid ${T.border}`, borderRadius: "12px", padding: "20px", boxShadow: "0 1px 2px rgba(0,0,0,0.06)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-        <div style={{ fontSize: "12px", fontWeight: 600, color: T.cinza600, textTransform: "uppercase" }}>Leadtime por Closer</div>
+        <div>
+          <div style={{ fontSize: "12px", fontWeight: 600, color: T.cinza600, textTransform: "uppercase" }}>Leadtime por Closer</div>
+          <div style={{ fontSize: "11px", color: T.cinza400, marginTop: "2px" }}>
+            {dealFilter === "all" ? "Todos os deals (ganhos + abertos)" : "Somente deals abertos (idade desde criacao)"}
+          </div>
+        </div>
         <div style={{ display: "flex", gap: "2px", backgroundColor: T.cinza50, borderRadius: "9999px", padding: "3px", border: `1px solid ${T.border}` }}>
           <button
             onClick={() => setDealFilter("all")}
@@ -240,8 +261,7 @@ function CloserSection({ byCloser, globalAvg }: { byCloser: LeadtimeData["byClos
               <th style={thStyle}>Squad</th>
               <th style={{ ...thStyle, textAlign: "right" }}>Media (dias)</th>
               <th style={{ ...thStyle, textAlign: "right" }}>Mediana</th>
-              <th style={{ ...thStyle, textAlign: "right" }}>Deals Ganhos</th>
-              <th style={{ ...thStyle, textAlign: "right" }}>Abertos</th>
+              <th style={{ ...thStyle, textAlign: "right" }}>Deals</th>
             </tr>
           </thead>
           <tbody>
@@ -249,7 +269,7 @@ function CloserSection({ byCloser, globalAvg }: { byCloser: LeadtimeData["byClos
               <CloserRow
                 key={c.name}
                 closer={c}
-                globalAvg={globalAvg}
+                globalFilteredAvg={globalFilteredStats.avg}
                 expanded={expandedClosers.has(c.name)}
                 onToggle={() => toggleCloser(c.name)}
                 dealFilter={dealFilter}
@@ -264,13 +284,13 @@ function CloserSection({ byCloser, globalAvg }: { byCloser: LeadtimeData["byClos
 
 function CloserRow({
   closer,
-  globalAvg,
+  globalFilteredAvg,
   expanded,
   onToggle,
   dealFilter,
 }: {
   closer: LeadtimeData["byCloser"][number];
-  globalAvg: number;
+  globalFilteredAvg: number;
   expanded: boolean;
   onToggle: () => void;
   dealFilter: DealFilter;
@@ -279,6 +299,8 @@ function CloserRow({
   const filteredDeals = dealFilter === "open"
     ? closer.deals.filter((d) => d.status === "open")
     : closer.deals;
+
+  const stats = computeStats(filteredDeals);
 
   return (
     <>
@@ -296,25 +318,24 @@ function CloserRow({
           </span>
         </td>
         <td style={{ ...tdStyle, color: T.cinza600 }}>{closer.squadId}</td>
-        <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600, color: daysColor(closer.avgCycleDays, globalAvg) }}>
-          {closer.wonDeals > 0 ? fmt(closer.avgCycleDays) : "-"}
+        <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600, color: stats.count > 0 ? daysColor(stats.avg, globalFilteredAvg) : T.cinza400 }}>
+          {stats.count > 0 ? fmt(stats.avg) : "-"}
         </td>
         <td style={{ ...tdStyle, textAlign: "right" }}>
-          {closer.wonDeals > 0 ? fmt(closer.medianCycleDays) : "-"}
+          {stats.count > 0 ? fmt(stats.median) : "-"}
         </td>
-        <td style={{ ...tdStyle, textAlign: "right" }}>{closer.wonDeals}</td>
-        <td style={{ ...tdStyle, textAlign: "right" }}>{closer.openDeals}</td>
+        <td style={{ ...tdStyle, textAlign: "right" }}>{stats.count}</td>
       </tr>
       {expanded && filteredDeals.length > 0 && (
         <tr>
-          <td colSpan={6} style={{ padding: 0 }}>
+          <td colSpan={5} style={{ padding: 0 }}>
             <DealTable deals={filteredDeals} />
           </td>
         </tr>
       )}
       {expanded && filteredDeals.length === 0 && (
         <tr>
-          <td colSpan={6} style={{ ...tdStyle, paddingLeft: "36px", color: T.cinza400, fontSize: "12px" }}>
+          <td colSpan={5} style={{ ...tdStyle, paddingLeft: "36px", color: T.cinza400, fontSize: "12px" }}>
             Nenhum deal {dealFilter === "open" ? "aberto" : ""} encontrado
           </td>
         </tr>
