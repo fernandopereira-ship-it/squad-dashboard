@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/constants";
-import type { TabKey, MediaFilter, AcompanhamentoData, AlinhamentoData, CampanhasData, RegrasMqlData, OciosidadeData, PresalesData, FunilData, MisalignedDealsData, PlanejamentoData, OrcamentoData, PerformanceData, BaselineData, DiagVendasData, ForecastData, UserRole } from "@/lib/types";
+import type { TabKey, MediaFilter, AcompanhamentoData, AlinhamentoData, CampanhasData, RegrasMqlData, OciosidadeData, PresalesData, FunilData, MisalignedDealsData, PlanejamentoData, OrcamentoData, PerformanceData, BaselineData, DiagVendasData, ForecastData, LeadtimeData, UserRole } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { Header } from "@/components/dashboard/header";
 import { AcompanhamentoView } from "@/components/dashboard/acompanhamento-view";
@@ -20,6 +20,7 @@ import { PerformancePreVendasView, PerformanceVendasView } from "@/components/da
 import { BaselineView } from "@/components/dashboard/baseline-view";
 import { DiagnosticoVendasView } from "@/components/dashboard/diagnostico-vendas-view";
 import { ForecastView } from "@/components/dashboard/forecast-view";
+import { LeadtimeView } from "@/components/dashboard/leadtime-view";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -45,6 +46,8 @@ export default function Dashboard() {
   const [baselineData, setBaselineData] = useState<BaselineData | null>(null);
   const [diagVendasData, setDiagVendasData] = useState<DiagVendasData | null>(null);
   const [forecastData, setForecastData] = useState<ForecastData | null>(null);
+  const [leadtimeData, setLeadtimeData] = useState<LeadtimeData | null>(null);
+  const [leadtimeDays, setLeadtimeDays] = useState(90);
   const [syncWarning, setSyncWarning] = useState<string | null>(null);
 
   useEffect(() => {
@@ -266,6 +269,19 @@ export default function Dashboard() {
     }
   }, []);
 
+  const fetchLeadtime = useCallback(async (days: number = 90) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/dashboard/leadtime?days=${days}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setLeadtimeData(await res.json());
+    } catch (err) {
+      console.error("Fetch leadtime error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const handleBudgetSave = useCallback(async (value: number) => {
     const now = new Date();
     const mes = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -322,6 +338,8 @@ export default function Dashboard() {
       fetchDiagVendas();
     } else if (mainView === "forecast" && !forecastData) {
       fetchForecast();
+    } else if (mainView === "leadtime" && !leadtimeData) {
+      fetchLeadtime(leadtimeDays);
     }
   }, [activeTab, mainView]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -344,6 +362,7 @@ export default function Dashboard() {
     setBaselineData(null);
     setDiagVendasData(null);
     setForecastData(null);
+    setLeadtimeData(null);
   };
 
   const fetchCurrentView = async () => {
@@ -361,6 +380,7 @@ export default function Dashboard() {
     else if (mainView === "baseline") await fetchBaseline();
     else if (mainView === "diagnostico-vendas") await fetchDiagVendas();
     else if (mainView === "forecast") await fetchForecast();
+    else if (mainView === "leadtime") await fetchLeadtime(leadtimeDays);
   };
 
   const handleRefresh = async () => {
@@ -456,6 +476,7 @@ export default function Dashboard() {
         {mainView === "baseline" && <BaselineView data={baselineData} loading={loading} />}
         {mainView === "diagnostico-vendas" && <DiagnosticoVendasView data={diagVendasData} loading={loading} />}
         {mainView === "forecast" && <ForecastView data={forecastData} loading={loading} />}
+        {mainView === "leadtime" && <LeadtimeView data={leadtimeData} loading={loading} daysBack={leadtimeDays} onDaysChange={(d) => { setLeadtimeDays(d); setLeadtimeData(null); fetchLeadtime(d); }} />}
         {mainView === "venda" && (
           <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
             <p style={{ fontSize: "16px" }}>Aba Venda — em construção</p>

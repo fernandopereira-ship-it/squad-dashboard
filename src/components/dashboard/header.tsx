@@ -7,7 +7,7 @@ import { T } from "@/lib/constants";
 import { pillBtnStyle, pillBtnPrimaryStyle, viewBtnStyle } from "./ui";
 
 const META_ADS_VIEWS = ["campanhas", "diagnostico-mkt", "orcamento", "planejamento"] as const;
-const VENDAS_VIEWS = ["perf-vendas", "baseline", "diagnostico-vendas", "ociosidade"] as const;
+const VENDAS_VIEWS = ["perf-vendas", "baseline", "diagnostico-vendas", "ociosidade", "leadtime"] as const;
 const PRE_VENDAS_VIEWS = ["presales", "perf-prevendas", "balanceamento"] as const;
 const RESULTADOS_VIEWS = ["resultados", "acompanhamento", "forecast"] as const;
 
@@ -325,6 +325,7 @@ export function Header({ mainView, setMainView, onRefresh, loading, lastUpdated,
                 { key: "baseline", label: "Base-Line", icon: <BarChart3 size={13} /> },
                 { key: "diagnostico-vendas", label: "Diagnóstico Vendas", icon: <Activity size={13} /> },
                 { key: "ociosidade", label: "Ociosidade", icon: <Clock size={13} /> },
+                { key: "leadtime", label: "Leadtime", icon: <Timer size={13} /> },
               ] as const).map((item) => (
                 <button
                   key={item.key}

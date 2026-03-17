@@ -633,6 +633,42 @@ export interface ForecastData {
   metodologia: string;
 }
 
+// Leadtime — Tempo médio por etapa do funil
+export interface LeadtimeStageRow {
+  stageOrder: number;
+  stageName: string;
+  avgDays: number;
+  medianDays: number;
+  p90Days: number;
+  wonDeals: number;
+  openDeals: number;
+  oldestOpen: {
+    deal_id: number;
+    title: string;
+    owner_name: string;
+    add_time: string;
+    ageDays: number;
+    link: string;
+  } | null;
+}
+
+export interface LeadtimeData {
+  avgCycleDays: number;
+  medianCycleDays: number;
+  p90CycleDays: number;
+  totalWonDeals: number;
+  totalOpenDeals: number;
+  stages: LeadtimeStageRow[];
+  byCloser: Array<{
+    name: string;
+    squadId: number;
+    avgCycleDays: number;
+    medianCycleDays: number;
+    wonDeals: number;
+    openDeals: number;
+  }>;
+}
+
 // Pré-Venda — Tempo de resposta dos pré-vendedores
 export interface PresalesDealRow {
   deal_id: number;
