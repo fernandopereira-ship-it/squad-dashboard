@@ -62,8 +62,9 @@ src/
       dashboard/performance/baseline/route.ts — Cohort analysis: closers alinhados pelo mes de contratacao
       dashboard/diagnostico-vendas/route.ts  — Leadtime de follow-up por closer (deals abertos sem atividade)
       dashboard/forecast/route.ts            — Forecast: previsao de vendas do mes (pipeline aberto × conv. historica)
+      dashboard/leadtime/route.ts             — Leadtime: tempo medio por etapa do funil (?days=N filtro periodo)
   components/dashboard/
-    header.tsx                               — Navegacao, usuario, botao Atualizar. Dropdown "Meta Ads" agrupa Campanhas/Diagnostico Mkt/Orcamento/Planejamento. Dropdown "Perf. Vendas" agrupa Perf. Vendas/Base-Line/Diagnostico Vendas
+    header.tsx                               — Navegacao, usuario, botao Atualizar. Dropdown "Meta Ads" agrupa Campanhas/Diagnostico Mkt/Orcamento/Planejamento. Dropdown "Vendas" agrupa Perf. Vendas/Base-Line/Diagnostico Vendas/Ociosidade/Leadtime
     acompanhamento-view.tsx                  — Heatmap 28 dias + metas
     alinhamento-view.tsx                     — Matriz pre-venda x closer + deals desalinhados por squad
     campanhas-view.tsx                       — Summary cards Meta Ads + tabelas por squad
@@ -78,6 +79,7 @@ src/
     baseline-view.tsx                        — Base-Line: cohort analysis de closers alinhados pela data de contratacao. Toggle conversao/OPP/WON, heatmap, grafico acumulado com mediana
     diagnostico-vendas-view.tsx              — Diagnostico Vendas: leadtime follow-up closers, deals sem atividade futura, atividades atrasadas
     forecast-view.tsx                        — Forecast: previsao de vendas (cards, range bar, pipeline por etapa, tabela squad/closer)
+    leadtime-view.tsx                        — Leadtime: tempo medio por etapa do funil (criacao→venda), deal mais antigo por etapa, breakdown por closer
     ui.tsx                                   — Componentes reutilizaveis (MediaFilterToggle, Pill, TH, etc)
   lib/
     constants.ts                             — Squads, empreendimentos, closers, UI tokens (T)
@@ -330,7 +332,7 @@ Ordem dos botoes: `Resultados ▼ | Meta Ads ▼ | Alinhamento Squad | Pré-Vend
 - **Resultados** e um dropdown que agrupa: Funil, Acompanhamento, Forecast
 
 - **Meta Ads** e um dropdown que agrupa: Campanhas, Diagnostico Mkt, Orcamento, Planejamento
-- **Perf. Vendas** e um dropdown que agrupa: Perf. Vendas, Base-Line, Diagnostico Vendas
+- **Vendas** e um dropdown que agrupa: Perf. Vendas, Base-Line, Diagnostico Vendas, Ociosidade, Leadtime
 - Dropdowns usam `useState` + `useRef` + `useEffect` (click outside listener) em `header.tsx`
 - Constantes `META_ADS_VIEWS` e `VENDAS_VIEWS` definem os view keys agrupados
 - Botao fica ativo (dark bg) quando `mainView` e qualquer um dos valores do grupo
@@ -372,6 +374,7 @@ O botao envia: `["dashboard-light", "meta-ads", "deals-light", "calendar", "pres
 | Orcamento | `["meta-ads"]` |
 | Diagnostico Vendas | `["deals"]` (deals-open popula last/next_activity_date + owner_name) |
 | Forecast | `["deals"]` (usa squad_deals para pipeline aberto + historico conversao) |
+| Leadtime | `["deals"]` (usa squad_deals para ciclo criacao→venda + deals abertos por etapa) |
 
 ## Planejamento — Filtro de Periodo
 - Select no topo da view com opcoes: 30d, 60d, 90d, 6 meses, 12 meses (default), Todo historico
@@ -473,6 +476,21 @@ O botao envia: `["dashboard-light", "meta-ads", "deals-light", "calendar", "pres
 - **CUIDADO queries de leadtime vs conversão:** conversão usa `add_time >= 90d` (deals criados no período). Leadtime usa `won_time >= 90d` (deals que fecharam no período, independente de quando foram criados). Misturar os filtros gera leadtimes artificialmente curtos porque `add_time >= 90d` só pega deals recentes com ciclos rápidos
 - **CUIDADO neq + NULL:** Supabase `.neq("campo", "valor")` exclui rows onde campo é NULL. Para filtrar `lost_reason != 'Duplicado/Erro'` sem excluir NULLs, filtrar em JS com `if (d.lost_reason === "Duplicado/Erro") continue`
 - **CUIDADO datas UTC:** `new Date("2026-03-01")` em BRT (UTC-3) vira 28/fev 21h. Usar `new Date("2026-03-01T12:00:00")` para exibição de mês
+
+## Leadtime (Tempo Medio por Etapa do Funil)
+- Aba dentro do dropdown "Vendas" no header
+- **API:** `/api/dashboard/leadtime?days=N` — calcula tempo medio criacao→venda e breakdown por etapa
+- **Dados:** usa `squad_deals` (filtro `is_marketing=true`, `empreendimento IS NOT NULL`)
+- **Logica:**
+  1. **Ciclo global:** `cycleDays = (won_time - add_time)` para cada deal ganho no periodo (filtro `won_time >= cutoff`). Calcula avg/median/P90
+  2. **Leadtime por etapa:** estimativa proporcional ponderada — stages mais altos recebem mais tempo. Peso de cada stage = `stage_order / sum(1..max_stage_order)`. Ex: deal com max_stage_order=9, peso stage 1 = 1/45, peso stage 9 = 9/45
+  3. **Deals abertos por etapa:** agrupados por `stage_order`. Encontra o deal mais antigo (menor `add_time`) em cada stage com link Pipedrive
+  4. **By closer:** agrupa deals ganhos por `owner_name`, calcula avg/median do ciclo. So inclui closers de V_COLS
+- **Parametro:** `?days=N` (default 90) — periodo de analise para deals ganhos (filtro por `won_time`)
+- **View:** summary cards (Leadtime Medio, Mediana, P90, Deals Ganhos, Deals Abertos), tabela por etapa com lead mais antigo, tabela por closer. Filtro de periodo (30d/60d/90d/180d/12m)
+- **Color coding:** verde (abaixo de 80% da media), vermelho (acima de 120% da media). Para deals antigos: verde <30d, amarelo 30-89d, vermelho >=90d
+- **Sync:** usa `["deals"]` (depende de `squad_deals` atualizado)
+- **CUIDADO:** usa distribuicao proporcional ponderada para estimativa de tempo por etapa (NAO uniforme). Stages mais altos do funil (negociacao, reservas) tendem a ter mais tempo que stages iniciais
 
 ## Base-Line (Cohort Analysis de Closers)
 - Aba dentro do dropdown "Perf. Vendas" no header
