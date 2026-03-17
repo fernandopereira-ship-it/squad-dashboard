@@ -189,7 +189,7 @@ export function ForecastView({ data, loading }: Props) {
                 <th style={{ ...thStyle, textAlign: "right" }}>Pipeline</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>Forecast</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>Meta</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>% Meta</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>% Forecast</th>
               </tr>
             </thead>
             <tbody>
