@@ -61,6 +61,7 @@ src/
       dashboard/performance/route.ts         — Funil por pessoa (closer, preseller, marketing) + time series
       dashboard/performance/baseline/route.ts — Cohort analysis: closers alinhados pelo mes de contratacao
       dashboard/diagnostico-vendas/route.ts  — Leadtime de follow-up por closer (deals abertos sem atividade)
+      dashboard/forecast/route.ts            — Forecast: previsao de vendas do mes (pipeline aberto × conv. historica)
   components/dashboard/
     header.tsx                               — Navegacao, usuario, botao Atualizar. Dropdown "Meta Ads" agrupa Campanhas/Diagnostico Mkt/Orcamento/Planejamento. Dropdown "Perf. Vendas" agrupa Perf. Vendas/Base-Line/Diagnostico Vendas
     acompanhamento-view.tsx                  — Heatmap 28 dias + metas
@@ -76,6 +77,7 @@ src/
     performance-view.tsx                     — Perf. Vendas (closers + empreendimentos) + Perf. Pre-Vendas. Graficos OPP→WON com mediana e filtro de periodo
     baseline-view.tsx                        — Base-Line: cohort analysis de closers alinhados pela data de contratacao. Toggle conversao/OPP/WON, heatmap, grafico acumulado com mediana
     diagnostico-vendas-view.tsx              — Diagnostico Vendas: leadtime follow-up closers, deals sem atividade futura, atividades atrasadas
+    forecast-view.tsx                        — Forecast: previsao de vendas (cards, range bar, pipeline por etapa, tabela squad/closer)
     ui.tsx                                   — Componentes reutilizaveis (MediaFilterToggle, Pill, TH, etc)
   lib/
     constants.ts                             — Squads, empreendimentos, closers, UI tokens (T)
@@ -320,9 +322,12 @@ Componente reutilizavel `MediaFilterToggle` em `ui.tsx`. Type `MediaFilter` cent
 - `tsconfig.json` DEVE excluir `supabase/` (Deno URL imports quebram build Next.js no Vercel)
 - **LIMITE 1000 ROWS:** Supabase retorna no maximo 1000 rows por request (queries `.from()` E `.rpc()`). Para tabelas/RPCs com mais de 1000 rows, DEVE paginar com `.range(offset, offset+999)` em loop. Exemplo: `get_historico_campanhas` retorna 1776 ads — sem paginacao, 776 ads ficam de fora silenciosamente (sem erro). `.limit(N)` NAO funciona para aumentar alem de 1000 em RPCs — usar `.range()` obrigatoriamente
 - **RPCs inexistentes:** `get_ad_funnel_counts` e `get_ad_won_cross_emp` NAO existem no banco (planejadas mas nunca criadas). Chamar RPCs inexistentes nao da throw — o erro e silenciado se checado com `if (res.error) console.warn(...)`. Sempre verificar se a RPC existe nas migrations antes de usa-la
+- **CUIDADO `.neq()` exclui NULLs:** `.neq("campo", "valor")` no Supabase/PostgREST exclui rows onde o campo e NULL. Para filtrar "campo diferente de X mas incluir NULLs", filtrar em JS: `if (d.campo === "X") continue`. Exemplo: `.neq("lost_reason", "Duplicado/Erro")` remove TODOS os deals WON porque `lost_reason` e NULL neles
 
 ## Navegacao Header
-Ordem dos botoes: `Resultados | Meta Ads ▼ | Alinhamento Squad | Acompanhamento | Pré-Venda | Ociosidade | Balanceamento | Perf. Pré-Vendas | Perf. Vendas ▼`
+Ordem dos botoes: `Resultados ▼ | Meta Ads ▼ | Alinhamento Squad | Pré-Venda ▼ | Vendas ▼`
+
+- **Resultados** e um dropdown que agrupa: Funil, Acompanhamento, Forecast
 
 - **Meta Ads** e um dropdown que agrupa: Campanhas, Diagnostico Mkt, Orcamento, Planejamento
 - **Perf. Vendas** e um dropdown que agrupa: Perf. Vendas, Base-Line, Diagnostico Vendas
@@ -366,6 +371,7 @@ O botao envia: `["dashboard-light", "meta-ads", "deals-light", "calendar", "pres
 | Planejamento | `["deals", "meta-ads"]` |
 | Orcamento | `["meta-ads"]` |
 | Diagnostico Vendas | `["deals"]` (deals-open popula last/next_activity_date + owner_name) |
+| Forecast | `["deals"]` (usa squad_deals para pipeline aberto + historico conversao) |
 
 ## Planejamento — Filtro de Periodo
 - Select no topo da view com opcoes: 30d, 60d, 90d, 6 meses, 12 meses (default), Todo historico
@@ -448,6 +454,23 @@ O botao envia: `["dashboard-light", "meta-ads", "deals-light", "calendar", "pres
 - **Deal links:** titulo clicavel abre no Pipedrive (`https://seazone-fd92b9.pipedrive.com/deal/{id}`)
 - **CUIDADO owner_name:** `/pipelines/{id}/deals` retorna `user_id` como integer (nao objeto). `syncDealsOpen` busca `/users` primeiro e mapeia `user_id → name`. Sem isso, `owner_name` fica null e a aba nao mostra dados
 - **Paginacao:** API route pagina com `.range()` (>1000 deals abertos possiveis)
+
+## Forecast (Previsão de Vendas do Mês)
+- Aba dentro do dropdown "Resultados" no header
+- **API:** `/api/dashboard/forecast` — calcula previsão de WON para o mês corrente
+- **Dados:** usa `squad_deals` (filtro `is_marketing=true`, `empreendimento IS NOT NULL`)
+- **Lógica:**
+  1. **Já Ganhos:** deals WON no mês corrente (`status=won`, `won_time >= mes_inicio`)
+  2. **Pipeline:** deals abertos por etapa × taxa de conversão histórica 90d por etapa
+  3. **Taxa conversão por etapa:** de todos os deals que passaram pela etapa X (`max_stage_order >= X`) nos últimos 90d, qual % virou WON
+  4. **Forecast = Já Ganhos + Pipeline**
+- **Ranges:** pessimista (pipeline ×0.7), esperado (×1.0), otimista (×1.3)
+- **Breakdown:** por squad (expansível para closers) com meta e % meta
+- **Metas:** lê de `squad_metas` (tab=won, month=mês atual), divide por número de closers no squad
+- **View:** cards resumo (Já Ganhos, Pipeline, Forecast Total), range bar visual com linha de meta, tabela pipeline por etapa, tabela squad/closer
+- **Sync:** usa `["deals"]` (depende de `squad_deals` atualizado)
+- **CUIDADO neq + NULL:** Supabase `.neq("campo", "valor")` exclui rows onde campo é NULL. Para filtrar `lost_reason != 'Duplicado/Erro'` sem excluir NULLs, filtrar em JS com `if (d.lost_reason === "Duplicado/Erro") continue`
+- **CUIDADO datas UTC:** `new Date("2026-03-01")` em BRT (UTC-3) vira 28/fev 21h. Usar `new Date("2026-03-01T12:00:00")` para exibição de mês
 
 ## Base-Line (Cohort Analysis de Closers)
 - Aba dentro do dropdown "Perf. Vendas" no header

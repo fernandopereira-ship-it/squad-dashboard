@@ -588,6 +588,7 @@ export interface ForecastStageSnapshot {
   stageOrder: number;
   openDeals: number;
   convRate: number;
+  leadtimeDays: number;
   expectedWon: number;
 }
 
