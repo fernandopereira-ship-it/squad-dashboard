@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import { V_COLS, SQUAD_V_MAP, SQUADS } from "@/lib/constants";
 import type { ForecastData, ForecastStageSnapshot, ForecastCloserRow, ForecastSquadRow } from "@/lib/types";
 
@@ -100,12 +101,17 @@ export async function GET() {
           .lt("won_time", mesFim)
           .range(o, o + ps - 1),
       ),
-      // 5. Metas WON do mês (proporcional ao dia — vamos extrapolar para meta total)
-      supabase
-        .from("squad_metas")
-        .select("squad_id, tab, meta")
-        .eq("month", `${mesStr}-01`)
-        .eq("tab", "won"),
+      // 5. Meta WON total do mês (service role key para acessar nekt_meta26_metas)
+      (() => {
+        const srk = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (!srk) return { data: null, error: null };
+        const svc = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, srk);
+        return svc
+          .from("nekt_meta26_metas")
+          .select("won_szi_meta_pago, won_szi_meta_direto")
+          .like("data", `%${String(month + 1).padStart(2, "0")}/${year}%`)
+          .single();
+      })(),
     ]);
 
     // --- Taxa de conversão por etapa (90d) ---
@@ -201,16 +207,12 @@ export async function GET() {
       pipelineByCloser[owner] = (pipelineByCloser[owner] || 0) + (convRate[so] || 0);
     }
 
-    // --- Meta total do mês (extrapolar de meta_to_date para meta full month) ---
-    // squad_metas armazena meta_to_date = (dia / diasNoMes) × meta_squad
-    // meta_squad_total = meta_to_date × diasNoMes / dia_atual
+    // --- Meta total do mês (valor cheio, não proporcional) ---
+    // meta_won_total = pago + direto, dividida por 5 closers, distribuída por squad
+    const metaWonTotal = (metasRows.data?.won_szi_meta_pago || 0) + (metasRows.data?.won_szi_meta_direto || 0);
     const metaBySquad: Record<number, number> = {};
-    if (metasRows.data) {
-      for (const m of metasRows.data) {
-        const metaToDate = m.meta || 0;
-        const metaTotal = diasPassados > 0 ? Math.round((metaToDate * diasNoMes / diasPassados) * 10) / 10 : 0;
-        metaBySquad[m.squad_id] = metaTotal;
-      }
+    for (const [sqId, indices] of Object.entries(SQUAD_V_MAP)) {
+      metaBySquad[Number(sqId)] = Math.round((metaWonTotal / 5) * indices.length * 10) / 10;
     }
 
     // --- Closer rows ---
